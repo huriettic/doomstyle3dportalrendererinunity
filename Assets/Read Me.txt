@@ -1,0 +1,1 @@
+Put map-clear.txt in the Resources folder.

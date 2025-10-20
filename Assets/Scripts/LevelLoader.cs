@@ -128,7 +128,6 @@ public class LevelLoader : MonoBehaviour
     private Vector3[] temporarytextures;
     private Vector3[] temporarynormals;
     private List<MathematicalPlane> MathematicalCamPlanes = new List<MathematicalPlane>();
-    private RenderParams rp;
     private Camera Cam;
     private Vector3 CamPoint;
     private SectorMeta CurrentSector;
@@ -151,6 +150,8 @@ public class LevelLoader : MonoBehaviour
     private List<Vector3> flooruvs = new List<Vector3>();
     private List<Vector3> ceilinguvs = new List<Vector3>();
     private List<Vector3> OpaqueTextures = new List<Vector3>();
+    private Queue<(FrustumMeta, SectorMeta)> PortalQueue = new Queue<(FrustumMeta, SectorMeta)>();
+    private GameObject RenderMesh;
 
     [System.Serializable]
     public class Sector
@@ -190,19 +191,9 @@ public class LevelLoader : MonoBehaviour
             0, 1, 2, 0, 2, 3
         };
 
-        rp = new RenderParams();
-
         LevelLists = new TopLevelLists();
 
-        CollisionObjects = new GameObject("Collision Meshes");
-
-        Shader shader = Resources.Load<Shader>("TEXARRAYSHADER");
-
-        opaquematerial = new Material(shader);
-
-        opaquematerial.mainTexture = Resources.Load<Texture2DArray>("Textures");
-
-        opaquemesh = new Mesh();
+        CreateGameObjects();
 
         buildGeometry();
 
@@ -292,12 +283,10 @@ public class LevelLoader : MonoBehaviour
 
             GetPortals(LevelLists.frustums[LevelLists.frustums.Count - 1], CurrentSector);
 
-            SetRenderMeshes();
+            SetRenderMesh();
 
             Cam.transform.hasChanged = false;
         }
-
-        Renderit();
     }
 
     void Awake()
@@ -313,6 +302,31 @@ public class LevelLoader : MonoBehaviour
         {
             currentForce.y -= gravity * Time.deltaTime;
         }
+    }
+
+    public void CreateGameObjects()
+    {
+        CollisionObjects = new GameObject("Collision Meshes");
+
+        Shader shader = Resources.Load<Shader>("TEXARRAYSHADER");
+
+        opaquematerial = new Material(shader);
+
+        opaquematerial.mainTexture = Resources.Load<Texture2DArray>("Textures");
+
+        opaquemesh = new Mesh();
+
+        opaquemesh.MarkDynamic();
+
+        RenderMesh = new GameObject("Render Mesh");
+
+        RenderMesh.AddComponent<MeshFilter>();
+        RenderMesh.AddComponent<MeshRenderer>();
+
+        Renderer MeshRend = RenderMesh.GetComponent<Renderer>();
+        MeshRend.sharedMaterial = opaquematerial;
+        MeshRend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        RenderMesh.GetComponent<MeshFilter>().mesh = opaquemesh;
     }
 
     private MathematicalPlane FromVec4(Vector4 aVec)
@@ -415,7 +429,7 @@ public class LevelLoader : MonoBehaviour
         return Vector3.Dot(plane.normal, point) + plane.distance;
     }
 
-    public void ClipTrianglesWithPlanes(FrustumMeta planes, List<Triangle> verttex, int startIndex, int count)
+    public void ClipTrianglesWithPlanes(FrustumMeta planes, List<Triangle> verttexnorm, int startIndex, int count)
     {
         OutTriangleVertices.Clear();
         OutTriangleTextures.Clear();
@@ -425,12 +439,23 @@ public class LevelLoader : MonoBehaviour
 
         for (int a = startIndex; a < count; a++)
         {
+            Triangle tri = verttexnorm[a];
+            Vector3 Edge1 = tri.v1 - tri.v0;
+            Vector3 Edge2 = tri.v2 - tri.v0;
+            Vector3 Normal = Vector3.Cross(Edge1, Edge2).normalized;
+            Vector3 CamDirection = (CamPoint - tri.v0).normalized;
+            float triangleDirection = Vector3.Dot(Normal, CamDirection);
+
+            if (triangleDirection < 0)
+            {
+                continue;
+            }
+
             int processverticescount = 0;
             int processtexturescount = 0;
             int processnormalscount = 0;
             int processboolcount = 0;
 
-            Triangle tri = verttex[a];
             processvertices[processverticescount] = tri.v0;
             processvertices[processverticescount + 1] = tri.v1;
             processvertices[processverticescount + 2] = tri.v2;
@@ -768,7 +793,7 @@ public class LevelLoader : MonoBehaviour
         }
     }
 
-    public void SetRenderMeshes()
+    public void SetRenderMesh()
     {
         opaquemesh.Clear();
 
@@ -779,13 +804,6 @@ public class LevelLoader : MonoBehaviour
         opaquemesh.SetTriangles(OpaqueTriangles, 0);
 
         opaquemesh.SetNormals(OpaqueNormals);
-    }
-
-    public void Renderit()
-    {
-        rp.material = opaquematerial;
-
-        Graphics.RenderMesh(rp, opaquemesh, 0, Matrix4x4.identity);
     }
 
     public bool CheckRadius(SectorMeta asector, Vector3 campoint)
@@ -909,47 +927,54 @@ public class LevelLoader : MonoBehaviour
 
     public void GetPortals(FrustumMeta APlanes, SectorMeta BSector)
     {
-        GetTriangles(APlanes, BSector);
+        PortalQueue.Enqueue((APlanes, BSector));
 
-        for (int i = BSector.portalStartIndex; i < BSector.portalStartIndex + BSector.portalCount; i++)
+        while (PortalQueue.Count > 0)
         {
-            if (MaxDepth > 4096)
+            (FrustumMeta frustum, SectorMeta sector) = PortalQueue.Dequeue();
+
+            GetTriangles(frustum, sector);
+
+            for (int i = sector.portalStartIndex; i < sector.portalStartIndex + sector.portalCount; i++)
             {
-                continue;
-            }
+                if (MaxDepth > 4096)
+                {
+                    continue;
+                }
 
-            planeDistance = GetPlaneSignedDistanceToPoint(LevelLists.planes[LevelLists.portals[i].portalPlane], CamPoint);
+                planeDistance = GetPlaneSignedDistanceToPoint(LevelLists.planes[LevelLists.portals[i].portalPlane], CamPoint);
 
-            if (planeDistance <= 0)
-            {
-                continue;
-            }
+                if (planeDistance <= 0)
+                {
+                    continue;
+                }
 
-            int sectornumber = LevelLists.portals[i].connectedSectorID;
+                int sectornumber = LevelLists.portals[i].connectedSectorID;
 
-            int portalnumber = LevelLists.portals[i].portalID;
+                int portalnumber = LevelLists.portals[i].portalID;
 
-            if (SectorsContains(LevelLists.sectors[sectornumber].sectorID))
-            {
+                if (SectorsContains(LevelLists.sectors[sectornumber].sectorID))
+                {
+                    MaxDepth += 1;
+
+                    PortalQueue.Enqueue((frustum, LevelLists.sectors[sectornumber]));
+
+                    continue;
+                }
+
+                ClipEdgesWithPlanes(frustum, LevelLists.portals[i]);
+
+                if (OutEdgeVertices.Count < 6 || OutEdgeVertices.Count % 2 == 1)
+                {
+                    continue;
+                }
+
+                SetClippingPlanes(OutEdgeVertices, portalnumber, CamPoint);
+
                 MaxDepth += 1;
 
-                GetPortals(APlanes, LevelLists.sectors[sectornumber]);
-
-                continue;
+                PortalQueue.Enqueue((LevelLists.frustums[portalnumber], LevelLists.sectors[sectornumber]));
             }
-
-            ClipEdgesWithPlanes(APlanes, LevelLists.portals[i]);
-
-            if (OutEdgeVertices.Count < 6 || OutEdgeVertices.Count % 2 == 1)
-            {
-                continue;
-            }
-
-            SetClippingPlanes(OutEdgeVertices, portalnumber, CamPoint);
-
-            MaxDepth += 1;
-
-            GetPortals(LevelLists.frustums[portalnumber], LevelLists.sectors[sectornumber]);
         }
     }
 

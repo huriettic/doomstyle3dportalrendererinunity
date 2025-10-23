@@ -435,8 +435,6 @@ public class LevelLoader : MonoBehaviour
         OutTriangleTextures.Clear();
         OutTriangleNormals.Clear();
 
-        float[] planeDist = new float[3];
-
         for (int a = startIndex; a < count; a++)
         {
             Triangle tri = verttexnorm[a];
@@ -475,13 +473,6 @@ public class LevelLoader : MonoBehaviour
 
             for (int b = planes.planeStartIndex; b < planes.planeStartIndex + planes.planeCount; b++)
             {
-                int inIndex = 0;
-                int outIndex1 = 0;
-                int outIndex2 = 0;
-                int outIndex = 0;
-                int inIndex1 = 0;
-                int inIndex2 = 0;
-
                 int AddTriangles = 0;
 
                 int temporaryverticescount = 0;
@@ -495,130 +486,200 @@ public class LevelLoader : MonoBehaviour
                         continue;
                     }
 
-                    planeDist[0] = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], processvertices[c]);
-                    planeDist[1] = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], processvertices[c + 1]);
-                    planeDist[2] = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], processvertices[c + 2]);
-                    bool b1 = planeDist[0] >= 0;
-                    bool b2 = planeDist[1] >= 0;
-                    bool b3 = planeDist[2] >= 0;
+                    Vector3 v0 = processvertices[c];
+                    Vector3 v1 = processvertices[c + 1];
+                    Vector3 v2 = processvertices[c + 2];
 
-                    int inCount = 0;
+                    Vector4 uv0 = processtextures[c];
+                    Vector4 uv1 = processtextures[c + 1];
+                    Vector4 uv2 = processtextures[c + 2];
 
-                    if (b1)
-                    {
-                        inCount += 1;
-                    }
+                    Vector3 n0 = processnormals[c];
+                    Vector3 n1 = processnormals[c + 1];
+                    Vector3 n2 = processnormals[c + 2];
 
-                    if (b2)
-                    {
-                        inCount += 1;
-                    }
+                    float d0 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], processvertices[c]);
+                    float d1 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], processvertices[c + 1]);
+                    float d2 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], processvertices[c + 2]);
 
-                    if (b3)
-                    {
-                        inCount += 1;
-                    }
+                    bool b0 = d0 >= 0;
+                    bool b1 = d1 >= 0;
+                    bool b2 = d2 >= 0;
 
-                    if (inCount == 3)
+                    if (b0 && b1 && b2)
                     {
                         continue;
                     }
-                    else if (inCount == 1)
+                    else if ((b0 && !b1 && !b2) || (!b0 && b1 && !b2) || (!b0 && !b1 && b2))
                     {
-                        if (b1 && !b2 && !b3)
+                        Vector3 inV, outV1, outV2;
+                        Vector4 inUV, outUV1, outUV2;
+                        Vector3 inN, outN1, outN2;
+                        float inD, outD1, outD2;
+
+                        if (b0)
                         {
-                            inIndex = 0;
-                            outIndex1 = 1;
-                            outIndex2 = 2;
+                            inV = v0;
+                            inUV = uv0;
+                            inN = n0;
+                            inD = d0;
+                            outV1 = v1;
+                            outUV1 = uv1;
+                            outN1 = n1;
+                            outD1 = d1;
+                            outV2 = v2;
+                            outUV2 = uv2;
+                            outN2 = n2;
+                            outD2 = d2;
                         }
-                        else if (!b1 && b2 && !b3)
+                        else if (b1)
                         {
-                            outIndex1 = 2;
-                            inIndex = 1;
-                            outIndex2 = 0;
+                            inV = v1;
+                            inUV = uv1;
+                            inN = n1;
+                            inD = d1;
+                            outV1 = v2;
+                            outUV1 = uv2;
+                            outN1 = n2;
+                            outD1 = d2;
+                            outV2 = v0;
+                            outUV2 = uv0;
+                            outN2 = n0;
+                            outD2 = d0;
                         }
-                        else if (!b1 && !b2 && b3)
+                        else
                         {
-                            outIndex1 = 0;
-                            outIndex2 = 1;
-                            inIndex = 2;
+                            inV = v2;
+                            inUV = uv2;
+                            inN = n2;
+                            inD = d2;
+                            outV1 = v0;
+                            outUV1 = uv0;
+                            outN1 = n0;
+                            outD1 = d0;
+                            outV2 = v1;
+                            outUV2 = uv1;
+                            outN2 = n1;
+                            outD2 = d1;
                         }
 
-                        float t1 = planeDist[inIndex] / (planeDist[inIndex] - planeDist[outIndex1]);
-                        float t2 = planeDist[inIndex] / (planeDist[inIndex] - planeDist[outIndex2]);
+                        float t1 = inD / (inD - outD1);
+                        float t2 = inD / (inD - outD2);
 
-                        temporaryvertices[temporaryverticescount] = processvertices[c + inIndex];
-                        temporaryvertices[temporaryverticescount + 1] = Vector3.Lerp(processvertices[c + inIndex], processvertices[c + outIndex1], t1);
-                        temporaryvertices[temporaryverticescount + 2] = Vector3.Lerp(processvertices[c + inIndex], processvertices[c + outIndex2], t2);
+                        temporaryvertices[temporaryverticescount] = inV;
+                        temporaryvertices[temporaryverticescount + 1] = Vector3.Lerp(inV, outV1, t1);
+                        temporaryvertices[temporaryverticescount + 2] = Vector3.Lerp(inV, outV2, t2);
                         temporaryverticescount += 3;
-                        temporarytextures[temporarytexturescount] = processtextures[c + inIndex];
-                        temporarytextures[temporarytexturescount + 1] = Vector3.Lerp(processtextures[c + inIndex], processtextures[c + outIndex1], t1);
-                        temporarytextures[temporarytexturescount + 2] = Vector3.Lerp(processtextures[c + inIndex], processtextures[c + outIndex2], t2);
+                        temporarytextures[temporarytexturescount] = inUV;
+                        temporarytextures[temporarytexturescount + 1] = Vector4.Lerp(inUV, outUV1, t1);
+                        temporarytextures[temporarytexturescount + 2] = Vector4.Lerp(inUV, outUV2, t2);
                         temporarytexturescount += 3;
-                        temporarynormals[temporarynormalscount] = processnormals[c + inIndex];
-                        temporarynormals[temporarynormalscount + 1] = Vector3.Lerp(processnormals[c + inIndex], processnormals[c + outIndex1], t1).normalized;
-                        temporarynormals[temporarynormalscount + 2] = Vector3.Lerp(processnormals[c + inIndex], processnormals[c + outIndex2], t2).normalized;
+                        temporarynormals[temporarynormalscount] = inN;
+                        temporarynormals[temporarynormalscount + 1] = Vector3.Lerp(inN, outN1, t1).normalized;
+                        temporarynormals[temporarynormalscount + 2] = Vector3.Lerp(inN, outN2, t2).normalized;
                         temporarynormalscount += 3;
-
                         processbool[c] = false;
                         processbool[c + 1] = false;
                         processbool[c + 2] = false;
 
                         AddTriangles += 1;
                     }
-                    else if (inCount == 2)
+                    else if ((!b0 && b1 && b2) || (b0 && !b1 && b2) || (b0 && b1 && !b2))
                     {
-                        if (!b1 && b2 && b3)
+                        Vector3 inV1, inV2, outV;
+                        Vector4 inUV1, inUV2, outUV;
+                        Vector3 inN1, inN2, outN;
+                        float inD1, inD2, outD;
+
+                        if (!b0)
                         {
-                            outIndex = 0;
-                            inIndex1 = 1;
-                            inIndex2 = 2;
+                            outV = v0;
+                            outUV = uv0;
+                            outN = n0;
+                            outD = d0;
+                            inV1 = v1;
+                            inUV1 = uv1;
+                            inN1 = n1;
+                            inD1 = d1;
+                            inV2 = v2;
+                            inUV2 = uv2;
+                            inN2 = n2;
+                            inD2 = d2;
                         }
-                        else if (b1 && !b2 && b3)
+                        else if (!b1)
                         {
-                            inIndex1 = 2;
-                            outIndex = 1;
-                            inIndex2 = 0;
+                            outV = v1;
+                            outUV = uv1;
+                            outN = n1;
+                            outD = d1;
+                            inV1 = v2;
+                            inUV1 = uv2;
+                            inN1 = n2;
+                            inD1 = d2;
+                            inV2 = v0;
+                            inUV2 = uv0;
+                            inN2 = n0;
+                            inD2 = d0;
                         }
-                        else if (b1 && b2 && !b3)
+                        else
                         {
-                            inIndex1 = 0;
-                            inIndex2 = 1;
-                            outIndex = 2;
+                            outV = v2;
+                            outUV = uv2;
+                            outN = n2;
+                            outD = d2;
+                            inV1 = v0;
+                            inUV1 = uv0;
+                            inN1 = n0;
+                            inD1 = d0;
+                            inV2 = v1;
+                            inUV2 = uv1;
+                            inN2 = n1;
+                            inD2 = d1;
                         }
 
-                        float t1 = planeDist[inIndex1] / (planeDist[inIndex1] - planeDist[outIndex]);
-                        float t2 = planeDist[inIndex2] / (planeDist[inIndex2] - planeDist[outIndex]);
+                        float t1 = inD1 / (inD1 - outD);
+                        float t2 = inD2 / (inD2 - outD);
 
-                        temporaryvertices[temporaryverticescount] = processvertices[c + inIndex1];
-                        temporaryvertices[temporaryverticescount + 1] = processvertices[c + inIndex2];
-                        temporaryvertices[temporaryverticescount + 2] = Vector3.Lerp(processvertices[c + inIndex1], processvertices[c + outIndex], t1);
-                        temporaryvertices[temporaryverticescount + 3] = Vector3.Lerp(processvertices[c + inIndex1], processvertices[c + outIndex], t1);
-                        temporaryvertices[temporaryverticescount + 4] = processvertices[c + inIndex2];
-                        temporaryvertices[temporaryverticescount + 5] = Vector3.Lerp(processvertices[c + inIndex2], processvertices[c + outIndex], t2);
-                        temporaryverticescount += 6;
-                        temporarytextures[temporarytexturescount] = processtextures[c + inIndex1];
-                        temporarytextures[temporarytexturescount + 1] = processtextures[c + inIndex2];
-                        temporarytextures[temporarytexturescount + 2] = Vector3.Lerp(processtextures[c + inIndex1], processtextures[c + outIndex], t1);
-                        temporarytextures[temporarytexturescount + 3] = Vector3.Lerp(processtextures[c + inIndex1], processtextures[c + outIndex], t1);
-                        temporarytextures[temporarytexturescount + 4] = processtextures[c + inIndex2];
-                        temporarytextures[temporarytexturescount + 5] = Vector3.Lerp(processtextures[c + inIndex2], processtextures[c + outIndex], t2);
-                        temporarytexturescount += 6;
-                        temporarynormals[temporarynormalscount] = processnormals[c + inIndex1];
-                        temporarynormals[temporarynormalscount + 1] = processnormals[c + inIndex2];
-                        temporarynormals[temporarynormalscount + 2] = Vector3.Lerp(processnormals[c + inIndex1], processnormals[c + outIndex], t1).normalized;
-                        temporarynormals[temporarynormalscount + 3] = Vector3.Lerp(processnormals[c + inIndex1], processnormals[c + outIndex], t1).normalized;
-                        temporarynormals[temporarynormalscount + 4] = processnormals[c + inIndex2];
-                        temporarynormals[temporarynormalscount + 5] = Vector3.Lerp(processnormals[c + inIndex2], processnormals[c + outIndex], t2).normalized;
-                        temporarynormalscount += 6;
+                        Vector3 vA = Vector3.Lerp(inV1, outV, t1);
+                        Vector3 vB = Vector3.Lerp(inV2, outV, t2);
 
+                        Vector4 uvA = Vector4.Lerp(inUV1, outUV, t1);
+                        Vector4 uvB = Vector4.Lerp(inUV2, outUV, t2);
+
+                        Vector3 nA = Vector3.Lerp(inN1, outN, t1).normalized;
+                        Vector3 nB = Vector3.Lerp(inN2, outN, t2).normalized;
+
+                        temporaryvertices[temporaryverticescount] = inV1;
+                        temporaryvertices[temporaryverticescount + 1] = inV2;
+                        temporaryvertices[temporaryverticescount + 2] = vA;
+                        temporaryverticescount += 3;
+                        temporarytextures[temporarytexturescount] = inUV1;
+                        temporarytextures[temporarytexturescount + 1] = inUV2;
+                        temporarytextures[temporarytexturescount + 2] = uvA;
+                        temporarytexturescount += 3;
+                        temporarynormals[temporarynormalscount] = inN1;
+                        temporarynormals[temporarynormalscount + 1] = inN2;
+                        temporarynormals[temporarynormalscount + 2] = nA;
+                        temporarynormalscount += 3;
+                        temporaryvertices[temporaryverticescount] = vA;
+                        temporaryvertices[temporaryverticescount + 1] = inV2;
+                        temporaryvertices[temporaryverticescount + 2] = vB;
+                        temporaryverticescount += 3;
+                        temporarytextures[temporarytexturescount] = uvA;
+                        temporarytextures[temporarytexturescount + 1] = inUV2;
+                        temporarytextures[temporarytexturescount + 2] = uvB;
+                        temporarytexturescount += 3;
+                        temporarynormals[temporarynormalscount] = nA;
+                        temporarynormals[temporarynormalscount + 1] = inN2;
+                        temporarynormals[temporarynormalscount + 2] = nB;
+                        temporarynormalscount += 3;
                         processbool[c] = false;
                         processbool[c + 1] = false;
                         processbool[c + 2] = false;
 
                         AddTriangles += 2;
                     }
-                    else if (inCount == 0)
+                    else
                     {
                         processbool[c] = false;
                         processbool[c + 1] = false;
@@ -675,10 +736,6 @@ public class LevelLoader : MonoBehaviour
         int processverticescount = 0;
         int processboolcount = 0;
 
-        Vector3[] lineSegment = new Vector3[2];
-
-        Vector3[] intersectionPoints = new Vector3[2];
-
         for (int a = portal.lineStartIndex; a < portal.lineStartIndex + portal.lineCount; a++)
         {
             Edge line = LevelLists.edges[a];
@@ -693,10 +750,11 @@ public class LevelLoader : MonoBehaviour
         for (int b = planes.planeStartIndex; b < planes.planeStartIndex + planes.planeCount; b++)
         {
             int intersection = 0;
-            int inIndex = 0;
-            int outIndex = 0;
 
             int temporaryverticescount = 0;
+
+            Vector3 intersectionPoint1 = Vector3.zero;
+            Vector3 intersectionPoint2 = Vector3.zero;
 
             for (int c = 0; c < processverticescount; c += 2)
             {
@@ -705,49 +763,43 @@ public class LevelLoader : MonoBehaviour
                     continue;
                 }
 
+                Vector3 p1 = processvertices[c];
+                Vector3 p2 = processvertices[c + 1];
+
                 float d1 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], processvertices[c]);
                 float d2 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], processvertices[c + 1]);
+
                 bool b1 = d1 >= 0;
                 bool b2 = d2 >= 0;
 
-                int inCount = 0;
-
-                if (b1)
-                {
-                    inCount += 1;
-                }
-
-                if (b2)
-                {
-                    inCount += 1;
-                }
-
-                if (inCount == 2)
+                if (b1 && b2)
                 {
                     continue;
                 }
-                else if (inCount == 1)
+                else if ((b1 && !b2) || (!b1 && b2))
                 {
-                    if (b1 && !b2)
-                    {
-                        inIndex = 0;
-                        outIndex = 1;
-                    }
-                    else if (!b1 && b2)
-                    {
-                        inIndex = 1;
-                        outIndex = 0;
-                    }
+                    Vector3 point1;
+                    Vector3 point2;
 
                     float t = d1 / (d1 - d2);
 
-                    intersectionPoints[outIndex] = Vector3.Lerp(processvertices[c], processvertices[c + 1], t);
+                    Vector3 intersectionPoint = Vector3.Lerp(p1, p2, t);
 
-                    lineSegment[inIndex] = processvertices[c + inIndex];
-                    lineSegment[outIndex] = intersectionPoints[outIndex];
+                    if (b1)
+                    {
+                        point1 = p1;
+                        point2 = intersectionPoint;
+                        intersectionPoint1 = intersectionPoint;
+                    }
+                    else
+                    {
+                        point1 = intersectionPoint;
+                        point2 = p2;
+                        intersectionPoint2 = intersectionPoint;
+                    }
 
-                    temporaryvertices[temporaryverticescount] = lineSegment[0];
-                    temporaryvertices[temporaryverticescount + 1] = lineSegment[1];
+                    temporaryvertices[temporaryverticescount] = point1;
+                    temporaryvertices[temporaryverticescount + 1] = point2;
                     temporaryverticescount += 2;
 
                     processbool[c] = false;
@@ -755,7 +807,7 @@ public class LevelLoader : MonoBehaviour
 
                     intersection += 1;
                 }
-                else if (inCount == 0)
+                else
                 {
                     processbool[c] = false;
                     processbool[c + 1] = false;
@@ -774,8 +826,8 @@ public class LevelLoader : MonoBehaviour
                     processboolcount += 2;
                 }
 
-                processvertices[processverticescount] = intersectionPoints[1];
-                processvertices[processverticescount + 1] = intersectionPoints[0];
+                processvertices[processverticescount] = intersectionPoint1;
+                processvertices[processverticescount + 1] = intersectionPoint2;
                 processverticescount += 2;
                 processbool[processboolcount] = true;
                 processbool[processboolcount + 1] = true;

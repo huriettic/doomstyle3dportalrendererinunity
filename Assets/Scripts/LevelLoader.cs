@@ -769,14 +769,14 @@ public class LevelLoader : MonoBehaviour
                 float d1 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], processvertices[c]);
                 float d2 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], processvertices[c + 1]);
 
-                bool b1 = d1 >= 0;
-                bool b2 = d2 >= 0;
+                bool b0 = d1 >= 0;
+                bool b1 = d2 >= 0;
 
-                if (b1 && b2)
+                if (b0 && b1)
                 {
                     continue;
                 }
-                else if ((b1 && !b2) || (!b1 && b2))
+                else if ((b0 && !b1) || (!b0 && b1))
                 {
                     Vector3 point1;
                     Vector3 point2;
@@ -785,7 +785,7 @@ public class LevelLoader : MonoBehaviour
 
                     Vector3 intersectionPoint = Vector3.Lerp(p1, p2, t);
 
-                    if (b1)
+                    if (b0)
                     {
                         point1 = p1;
                         point2 = intersectionPoint;

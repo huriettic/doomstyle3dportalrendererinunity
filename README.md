@@ -14,11 +14,11 @@ My portal rendering uses mathematical planes and clipping triangles, it started 
 
 
 
-To run this project, you’ll need the level file map-clear.txt, which is not included in this repository.
+Add the level file map-clear.txt, which is not included in this repository or use the included level I made, Two Hallways.
 
 
 
-You can get it from the video and put it in the Resources folder in the project.
+You can get map-clear.txt from the video and put it in the Resources folder in the project.
 
 
 

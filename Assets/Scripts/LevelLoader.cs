@@ -151,6 +151,7 @@ public class LevelLoader : MonoBehaviour
     private List<Vector3> ceilinguvs = new List<Vector3>();
     private List<Vector3> OpaqueTextures = new List<Vector3>();
     private Queue<(FrustumMeta, SectorMeta)> PortalQueue = new Queue<(FrustumMeta, SectorMeta)>();
+    private Queue<SectorMeta> SectorQueue = new Queue<SectorMeta>();
     private GameObject RenderMesh;
 
     [System.Serializable]
@@ -315,6 +316,8 @@ public class LevelLoader : MonoBehaviour
         opaquematerial.mainTexture = Resources.Load<Texture2DArray>("Textures");
 
         opaquemesh = new Mesh();
+
+        opaquemesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
 
         opaquemesh.MarkDynamic();
 
@@ -913,50 +916,57 @@ public class LevelLoader : MonoBehaviour
 
     public void GetSectors(SectorMeta ASector)
     {
-        Sectors.Add(ASector);
+        SectorQueue.Enqueue(ASector);
 
-        for (int i = ASector.portalStartIndex; i < ASector.portalStartIndex + ASector.portalCount; i++)
+        while (SectorQueue.Count > 0)
         {
-            int portalnumber = LevelLists.portals[i].connectedSectorID;
+            SectorMeta sector = SectorQueue.Dequeue();
 
-            SectorMeta portalsector = LevelLists.sectors[portalnumber];
+            Sectors.Add(sector);
 
-            if (SectorsContains(portalsector.sectorID))
+            for (int i = sector.portalStartIndex; i < sector.portalStartIndex + sector.portalCount; i++)
             {
-                continue;
-            }
+                int portalnumber = LevelLists.portals[i].connectedSectorID;
 
-            radius = CheckRadius(portalsector, CamPoint);
+                SectorMeta portalsector = LevelLists.sectors[portalnumber];
 
-            if (radius)
-            {
-                GetSectors(portalsector);
-            }
-        }
-
-        check = CheckSector(ASector, CamPoint);
-
-        if (check)
-        {
-            CurrentSector = ASector;
-
-            if (SectorsDoNotEqual())
-            {
-                for (int i = 0; i < OldSectors.Count; i++)
+                if (SectorsContains(portalsector.sectorID))
                 {
-                    Physics.IgnoreCollision(Player, CollisionSectors[OldSectors[i].sectorID], true);
+                    continue;
                 }
 
-                for (int i = 0; i < Sectors.Count; i++)
+                radius = CheckRadius(portalsector, CamPoint);
+
+                if (radius)
                 {
-                    Physics.IgnoreCollision(Player, CollisionSectors[Sectors[i].sectorID], false);
+                    SectorQueue.Enqueue(portalsector);
                 }
+            }
 
-                OldSectors.Clear();
+            check = CheckSector(sector, CamPoint);
 
-                for (int i = 0; i < Sectors.Count; i++)
+            if (check)
+            {
+                CurrentSector = sector;
+
+                if (SectorsDoNotEqual())
                 {
-                    OldSectors.Add(Sectors[i]);
+                    for (int i = 0; i < OldSectors.Count; i++)
+                    {
+                        Physics.IgnoreCollision(Player, CollisionSectors[OldSectors[i].sectorID], true);
+                    }
+
+                    for (int i = 0; i < Sectors.Count; i++)
+                    {
+                        Physics.IgnoreCollision(Player, CollisionSectors[Sectors[i].sectorID], false);
+                    }
+
+                    OldSectors.Clear();
+
+                    for (int i = 0; i < Sectors.Count; i++)
+                    {
+                        OldSectors.Add(Sectors[i]);
+                    }
                 }
             }
         }

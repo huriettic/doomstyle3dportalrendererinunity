@@ -337,7 +337,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c83c25e458d679d46bf50294c52b246f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Name: map-clear
+  Name: twohallways-clear
   speed: 7
   jumpHeight: 2
   gravity: 5

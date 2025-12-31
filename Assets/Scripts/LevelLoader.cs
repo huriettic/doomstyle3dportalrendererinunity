@@ -3,6 +3,14 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [Serializable]
+public struct Triangle
+{
+    public Vector3 v0, v1, v2;
+    public Vector3 uv0, uv1, uv2;
+    public Vector3 n0, n1, n2;
+};
+
+[Serializable]
 public struct Edge
 {
     public Vector3 start;
@@ -17,47 +25,10 @@ public struct MathematicalPlane
 };
 
 [Serializable]
-public struct Triangle
-{
-    public Vector3 v0, v1, v2;
-    public Vector3 uv0, uv1, uv2;
-    public Vector3 n0, n1, n2;
-};
-
-[Serializable]
-public struct StartPos
-{
-    public Vector3 Position;
-    public int SectorID;
-};
-
-[Serializable]
-public struct FrustumMeta
-{
-    public int planeStartIndex;
-    public int planeCount;
-
-    public int frustumID;
-};
-
-[Serializable]
-public struct PortalMeta
+public struct PolygonMeta
 {
     public int lineStartIndex;
     public int lineCount;
-
-    public int portalPlane;
-    public int portalID;
-
-    public int sectorID;
-    public int connectedSectorID;
-};
-
-[Serializable]
-public struct SectorMeta
-{
-    public int planeStartIndex;
-    public int planeCount;
 
     public int opaqueStartIndex;
     public int opaqueCount;
@@ -65,10 +36,32 @@ public struct SectorMeta
     public int collisionStartIndex;
     public int collisionCount;
 
-    public int portalStartIndex;
-    public int portalCount;
+    public int connectedStartIndex;
+    public int connectedCount;
+
+    public int connectedSectorID;
+    public int sectorID;
+
+    public int plane;
+};
+
+[Serializable]
+public struct SectorMeta
+{
+    public int polygonStartIndex;
+    public int polygonCount;
+
+    public int planeStartIndex;
+    public int planeCount;
 
     public int sectorID;
+};
+
+[Serializable]
+public struct StartPos
+{
+    public Vector3 Position;
+    public int SectorID;
 };
 
 public class LevelLoader : MonoBehaviour
@@ -131,6 +124,7 @@ public class LevelLoader : MonoBehaviour
     private Camera Cam;
     private Vector3 CamPoint;
     private SectorMeta CurrentSector;
+    private SectorMeta NextSector;
     private List<SectorMeta> Sectors = new List<SectorMeta>();
     private List<SectorMeta> OldSectors = new List<SectorMeta>();
     private List<Vector3> OutTriangleVertices = new List<Vector3>();
@@ -150,11 +144,11 @@ public class LevelLoader : MonoBehaviour
     private List<Vector3> flooruvs = new List<Vector3>();
     private List<Vector3> ceilinguvs = new List<Vector3>();
     private List<Vector3> OpaqueTextures = new List<Vector3>();
-    private Queue<(FrustumMeta, SectorMeta)> PortalQueue = new Queue<(FrustumMeta, SectorMeta)>();
+    private Queue<SectorMeta> PortalQueue = new Queue<SectorMeta>();
     private Queue<SectorMeta> SectorQueue = new Queue<SectorMeta>();
     private GameObject RenderMesh;
 
-    [System.Serializable]
+    [Serializable]
     public class Sector
     {
         public float floorHeight;
@@ -163,6 +157,7 @@ public class LevelLoader : MonoBehaviour
         public List<int> wallTypes = new List<int>(); // -1 for solid, sector index for portal
     }
 
+    [Serializable]
     public class PlayerStart
     {
         public Vector3 location;
@@ -173,14 +168,13 @@ public class LevelLoader : MonoBehaviour
     [Serializable]
     public class TopLevelLists
     {
-        public List<SectorMeta> sectors = new List<SectorMeta>();
-        public List<PortalMeta> portals = new List<PortalMeta>();
-        public List<StartPos> positions = new List<StartPos>();
+        public List<Edge> edges = new List<Edge>();
         public List<Triangle> opaques = new List<Triangle>();
         public List<Triangle> collisions = new List<Triangle>();
-        public List<FrustumMeta> frustums = new List<FrustumMeta>();
         public List<MathematicalPlane> planes = new List<MathematicalPlane>();
-        public List<Edge> edges = new List<Edge>();
+        public List<PolygonMeta> polygons = new List<PolygonMeta>();
+        public List<SectorMeta> sectors = new List<SectorMeta>();
+        public List<StartPos> positions = new List<StartPos>();
     }
 
     void Start()
@@ -196,13 +190,19 @@ public class LevelLoader : MonoBehaviour
 
         CreateGameObjects();
 
-        buildGeometry();
+        BuildGeometry();
 
-        buildLists();
+        BuildLists();
 
-        buildObjects();
+        BuildObjects();
 
-        buildCollsionSectors();
+        BuildCollsionSectors();
+
+        Playerstart();
+
+        //BuildEdges();
+
+        //BuildOpaques();
 
         //OpaqueObjects = new GameObject("Opaque Meshes");
 
@@ -211,10 +211,6 @@ public class LevelLoader : MonoBehaviour
         //linematerial = new Material(Shader.Find("Standard"));
 
         //linematerial.color = Color.cyan;
-
-        //buildEdges();
-
-        //buildOpaques();
 
         processbool = new bool[256];
 
@@ -229,20 +225,6 @@ public class LevelLoader : MonoBehaviour
         temporarytextures = new Vector3[256];
 
         temporarynormals = new Vector3[256];
-
-        Player.GetComponent<CharacterController>().enabled = true;
-
-        Cursor.lockState = CursorLockMode.Locked;
-
-        Playerstart();
-
-        FrustumMeta temp = LevelLists.frustums[LevelLists.frustums.Count - 1];
-
-        temp.planeStartIndex = 0;
-
-        temp.planeCount = 4;
-
-        LevelLists.frustums[LevelLists.frustums.Count - 1] = temp;
 
         for (int i = 0; i < LevelLists.sectors.Count; i++)
         {
@@ -282,7 +264,7 @@ public class LevelLoader : MonoBehaviour
 
             MaxDepth = 0;
 
-            GetPortals(LevelLists.frustums[LevelLists.frustums.Count - 1], CurrentSector);
+            GetPortals(CurrentSector);
 
             SetRenderMesh();
 
@@ -293,6 +275,10 @@ public class LevelLoader : MonoBehaviour
     void Awake()
     {
         Player = GameObject.Find("Player").GetComponent<CharacterController>();
+
+        Player.GetComponent<CharacterController>().enabled = true;
+
+        Cursor.lockState = CursorLockMode.Locked;
 
         Cam = Camera.main;
     }
@@ -365,7 +351,7 @@ public class LevelLoader : MonoBehaviour
         SetFrustumPlanes(planes, cam.projectionMatrix * cam.worldToCameraMatrix);
     }
 
-    public void SetClippingPlanes(List<Vector3> vertices, int portalnumber, Vector3 viewPos)
+    public void SetClippingPlanes(List<Vector3> vertices, int portalnumber, int polygonStart, int polygonCount, Vector3 viewPos)
     {
         int StartIndex = MathematicalCamPlanes.Count;
 
@@ -387,12 +373,13 @@ public class LevelLoader : MonoBehaviour
             }
         }
 
-        FrustumMeta temp = LevelLists.frustums[portalnumber];
+        NextSector.polygonStartIndex = polygonStart;
+        NextSector.polygonCount = polygonCount;
 
-        temp.planeStartIndex = StartIndex;
-        temp.planeCount = IndexCount;
+        NextSector.planeStartIndex = StartIndex;
+        NextSector.planeCount = IndexCount;
 
-        LevelLists.frustums[portalnumber] = temp;
+        NextSector.sectorID = portalnumber;
     }
 
     public void PlayerInput()
@@ -432,7 +419,7 @@ public class LevelLoader : MonoBehaviour
         return Vector3.Dot(plane.normal, point) + plane.distance;
     }
 
-    public void ClipTrianglesWithPlanes(FrustumMeta planes, List<Triangle> verttexnorm, int startIndex, int count)
+    public void ClipTrianglesWithPlanes(SectorMeta planes, List<Triangle> verttexnorm, int startIndex, int count)
     {
         OutTriangleVertices.Clear();
         OutTriangleTextures.Clear();
@@ -732,7 +719,7 @@ public class LevelLoader : MonoBehaviour
         }
     }
 
-    public void ClipEdgesWithPlanes(FrustumMeta planes, PortalMeta portal)
+    public void ClipEdgesWithPlanes(SectorMeta planes, PolygonMeta portal)
     {
         OutEdgeVertices.Clear();
 
@@ -863,9 +850,9 @@ public class LevelLoader : MonoBehaviour
 
     public bool CheckRadius(SectorMeta asector, Vector3 campoint)
     {
-        for (int i = asector.planeStartIndex; i < asector.planeStartIndex + asector.planeCount; i++)
+        for (int i = asector.polygonStartIndex; i < asector.polygonStartIndex + asector.polygonCount; i++)
         {
-            if (GetPlaneSignedDistanceToPoint(LevelLists.planes[i], campoint) < -0.6f)
+            if (GetPlaneSignedDistanceToPoint(LevelLists.planes[LevelLists.polygons[i].plane], campoint) < -0.6f)
             {
                 return false;
             }
@@ -875,9 +862,9 @@ public class LevelLoader : MonoBehaviour
 
     public bool CheckSector(SectorMeta asector, Vector3 campoint)
     {
-        for (int i = asector.planeStartIndex; i < asector.planeStartIndex + asector.planeCount; i++)
+        for (int i = asector.polygonStartIndex; i < asector.polygonStartIndex + asector.polygonCount; i++)
         {
-            if (GetPlaneSignedDistanceToPoint(LevelLists.planes[i], campoint) < 0)
+            if (GetPlaneSignedDistanceToPoint(LevelLists.planes[LevelLists.polygons[i].plane], campoint) < 0)
             {
                 return false;
             }
@@ -924,11 +911,16 @@ public class LevelLoader : MonoBehaviour
 
             Sectors.Add(sector);
 
-            for (int i = sector.portalStartIndex; i < sector.portalStartIndex + sector.portalCount; i++)
+            for (int i = sector.polygonStartIndex; i < sector.polygonStartIndex + sector.polygonCount; i++)
             {
-                int portalnumber = LevelLists.portals[i].connectedSectorID;
+                int connectedsector = LevelLists.polygons[i].connectedSectorID;
 
-                SectorMeta portalsector = LevelLists.sectors[portalnumber];
+                if (connectedsector == -1)
+                {
+                    continue;
+                }
+
+                SectorMeta portalsector = LevelLists.sectors[connectedsector];
 
                 if (SectorsContains(portalsector.sectorID))
                 {
@@ -972,9 +964,9 @@ public class LevelLoader : MonoBehaviour
         }
     }
 
-    public void GetTriangles(FrustumMeta APlanes, SectorMeta BSector)
+    public void GetTriangles(SectorMeta ASector, PolygonMeta BPolygon)
     {
-        ClipTrianglesWithPlanes(APlanes, LevelLists.opaques, BSector.opaqueStartIndex, BSector.opaqueStartIndex + BSector.opaqueCount);
+        ClipTrianglesWithPlanes(ASector, LevelLists.opaques, BPolygon.opaqueStartIndex, BPolygon.opaqueStartIndex + BPolygon.opaqueCount);
 
         for (int e = 0; e < OutTriangleVertices.Count; e++)
         {
@@ -987,55 +979,72 @@ public class LevelLoader : MonoBehaviour
         combinedTriangles += OutTriangleVertices.Count;
     }
 
-    public void GetPortals(FrustumMeta APlanes, SectorMeta BSector)
+    public void GetPortals(SectorMeta ASector)
     {
-        PortalQueue.Enqueue((APlanes, BSector));
+        PortalQueue.Enqueue(ASector);
 
         while (PortalQueue.Count > 0)
         {
-            (FrustumMeta frustum, SectorMeta sector) = PortalQueue.Dequeue();
+            SectorMeta sector = PortalQueue.Dequeue();
 
-            GetTriangles(frustum, sector);
-
-            for (int i = sector.portalStartIndex; i < sector.portalStartIndex + sector.portalCount; i++)
+            for (int i = sector.polygonStartIndex; i < sector.polygonStartIndex + sector.polygonCount; i++)
             {
                 if (MaxDepth > 4096)
                 {
                     continue;
                 }
 
-                planeDistance = GetPlaneSignedDistanceToPoint(LevelLists.planes[LevelLists.portals[i].portalPlane], CamPoint);
+                PolygonMeta polygon = LevelLists.polygons[i];
+
+                planeDistance = GetPlaneSignedDistanceToPoint(LevelLists.planes[polygon.plane], CamPoint);
 
                 if (planeDistance <= 0)
                 {
                     continue;
                 }
 
-                int sectornumber = LevelLists.portals[i].connectedSectorID;
+                int connectedsector = polygon.connectedSectorID;
 
-                int portalnumber = LevelLists.portals[i].portalID;
-
-                if (SectorsContains(LevelLists.sectors[sectornumber].sectorID))
+                if (connectedsector == -1)
                 {
+                    GetTriangles(sector, polygon);
+                }
+                else
+                {
+                    int connectedstart = polygon.connectedStartIndex;
+
+                    int connectedcount = polygon.connectedCount;
+
+                    if (SectorsContains(LevelLists.sectors[connectedsector].sectorID))
+                    {
+                        MaxDepth += 1;
+
+                        NextSector.polygonStartIndex = connectedstart;
+                        NextSector.polygonCount = connectedcount;
+
+                        NextSector.planeStartIndex = sector.planeStartIndex;
+                        NextSector.planeCount = sector.planeCount;
+
+                        NextSector.sectorID = connectedsector;
+
+                        PortalQueue.Enqueue(NextSector);
+
+                        continue;
+                    }
+
+                    ClipEdgesWithPlanes(sector, LevelLists.polygons[i]);
+
+                    if (OutEdgeVertices.Count < 6 || OutEdgeVertices.Count % 2 == 1)
+                    {
+                        continue;
+                    }
+
+                    SetClippingPlanes(OutEdgeVertices, connectedsector, connectedstart, connectedcount, CamPoint);
+
                     MaxDepth += 1;
 
-                    PortalQueue.Enqueue((frustum, LevelLists.sectors[sectornumber]));
-
-                    continue;
-                }
-
-                ClipEdgesWithPlanes(frustum, LevelLists.portals[i]);
-
-                if (OutEdgeVertices.Count < 6 || OutEdgeVertices.Count % 2 == 1)
-                {
-                    continue;
-                }
-
-                SetClippingPlanes(OutEdgeVertices, portalnumber, CamPoint);
-
-                MaxDepth += 1;
-
-                PortalQueue.Enqueue((LevelLists.frustums[portalnumber], LevelLists.sectors[sectornumber]));
+                    PortalQueue.Enqueue(NextSector);
+                }    
             }
         }
     }
@@ -1166,7 +1175,7 @@ public class LevelLoader : MonoBehaviour
         Debug.Log($"Player start: location={starts[0].location}, angle={starts[0].angle}, sector={starts[0].sector}");
     }
 
-    public void buildGeometry()
+    public void BuildGeometry()
     {
         for (int i = 0; i < sectors.Count; i++)
         {
@@ -1516,7 +1525,7 @@ public class LevelLoader : MonoBehaviour
         }
     }
 
-    public void buildEdges()
+    public void BuildEdges()
     {
         for (int i = 0; i < LevelLists.sectors.Count; i++)
         {
@@ -1526,15 +1535,18 @@ public class LevelLoader : MonoBehaviour
 
             int lineCount = 0;
 
-            for (int e = LevelLists.sectors[i].portalStartIndex; e < LevelLists.sectors[i].portalStartIndex + LevelLists.sectors[i].portalCount; e++)
+            for (int e = LevelLists.sectors[i].polygonStartIndex; e < LevelLists.sectors[i].polygonStartIndex + LevelLists.sectors[i].polygonCount; e++)
             {
-                for (int f = LevelLists.portals[e].lineStartIndex; f < LevelLists.portals[e].lineStartIndex + LevelLists.portals[e].lineCount; f++)
+                if (LevelLists.polygons[e].lineCount != -1)
                 {
-                    OpaqueVertices.Add(LevelLists.edges[f].start);
-                    OpaqueVertices.Add(LevelLists.edges[f].end);
-                    OpaqueTriangles.Add(lineCount);
-                    OpaqueTriangles.Add(lineCount + 1);
-                    lineCount += 2;
+                    for (int f = LevelLists.polygons[e].lineStartIndex; f < LevelLists.polygons[e].lineStartIndex + LevelLists.polygons[e].lineCount; f++)
+                    {
+                        OpaqueVertices.Add(LevelLists.edges[f].start);
+                        OpaqueVertices.Add(LevelLists.edges[f].end);
+                        OpaqueTriangles.Add(lineCount);
+                        OpaqueTriangles.Add(lineCount + 1);
+                        lineCount += 2;
+                    }
                 }
             }
 
@@ -1562,7 +1574,7 @@ public class LevelLoader : MonoBehaviour
         }
     }
 
-    public void buildOpaques()
+    public void BuildOpaques()
     {
         for (int i = 0; i < LevelLists.sectors.Count; i++)
         {
@@ -1576,21 +1588,27 @@ public class LevelLoader : MonoBehaviour
 
             int triangleCount = 0;
 
-            for (int e = LevelLists.sectors[i].opaqueStartIndex; e < LevelLists.sectors[i].opaqueStartIndex + LevelLists.sectors[i].opaqueCount; e++)
+            for (int e = LevelLists.sectors[i].polygonStartIndex; e < LevelLists.sectors[i].polygonStartIndex + LevelLists.sectors[i].polygonCount; e++)
             {
-                OpaqueVertices.Add(LevelLists.opaques[e].v0);
-                OpaqueVertices.Add(LevelLists.opaques[e].v1);
-                OpaqueVertices.Add(LevelLists.opaques[e].v2);
-                OpaqueTextures.Add(LevelLists.opaques[e].uv0);
-                OpaqueTextures.Add(LevelLists.opaques[e].uv1);
-                OpaqueTextures.Add(LevelLists.opaques[e].uv2);
-                OpaqueNormals.Add(LevelLists.opaques[e].n0);
-                OpaqueNormals.Add(LevelLists.opaques[e].n1);
-                OpaqueNormals.Add(LevelLists.opaques[e].n2);
-                OpaqueTriangles.Add(triangleCount);
-                OpaqueTriangles.Add(triangleCount + 1);
-                OpaqueTriangles.Add(triangleCount + 2);
-                triangleCount += 3;
+                if (LevelLists.polygons[e].opaqueCount != -1)
+                {
+                    for (int f = LevelLists.polygons[e].opaqueStartIndex; f < LevelLists.polygons[e].opaqueStartIndex + LevelLists.polygons[e].opaqueCount; f++)
+                    {
+                        OpaqueVertices.Add(LevelLists.opaques[f].v0);
+                        OpaqueVertices.Add(LevelLists.opaques[f].v1);
+                        OpaqueVertices.Add(LevelLists.opaques[f].v2);
+                        OpaqueTextures.Add(LevelLists.opaques[f].uv0);
+                        OpaqueTextures.Add(LevelLists.opaques[f].uv1);
+                        OpaqueTextures.Add(LevelLists.opaques[f].uv2);
+                        OpaqueNormals.Add(LevelLists.opaques[f].n0);
+                        OpaqueNormals.Add(LevelLists.opaques[f].n1);
+                        OpaqueNormals.Add(LevelLists.opaques[f].n2);
+                        OpaqueTriangles.Add(triangleCount);
+                        OpaqueTriangles.Add(triangleCount + 1);
+                        OpaqueTriangles.Add(triangleCount + 2);
+                        triangleCount += 3;
+                    }
+                }
             }
 
             Mesh combinedmesh = new Mesh();
@@ -1621,7 +1639,7 @@ public class LevelLoader : MonoBehaviour
         }
     }
 
-    public void buildCollsionSectors()
+    public void BuildCollsionSectors()
     {
         for (int i = 0; i < LevelLists.sectors.Count; i++)
         {
@@ -1631,15 +1649,21 @@ public class LevelLoader : MonoBehaviour
 
             int triangleCount = 0;
 
-            for (int e = LevelLists.sectors[i].collisionStartIndex; e < LevelLists.sectors[i].collisionStartIndex + LevelLists.sectors[i].collisionCount; e++)
+            for (int e = LevelLists.sectors[i].polygonStartIndex; e < LevelLists.sectors[i].polygonStartIndex + LevelLists.sectors[i].polygonCount; e++)
             {
-                OpaqueVertices.Add(LevelLists.collisions[e].v0);
-                OpaqueVertices.Add(LevelLists.collisions[e].v1);
-                OpaqueVertices.Add(LevelLists.collisions[e].v2);
-                OpaqueTriangles.Add(triangleCount);
-                OpaqueTriangles.Add(triangleCount + 1);
-                OpaqueTriangles.Add(triangleCount + 2);
-                triangleCount += 3;
+                if (LevelLists.polygons[e].collisionCount != -1)
+                {
+                    for (int f = LevelLists.polygons[e].collisionStartIndex; f < LevelLists.polygons[e].collisionStartIndex + LevelLists.polygons[e].collisionCount; f++)
+                    {
+                        OpaqueVertices.Add(LevelLists.collisions[f].v0);
+                        OpaqueVertices.Add(LevelLists.collisions[f].v1);
+                        OpaqueVertices.Add(LevelLists.collisions[f].v2);
+                        OpaqueTriangles.Add(triangleCount);
+                        OpaqueTriangles.Add(triangleCount + 1);
+                        OpaqueTriangles.Add(triangleCount + 2);
+                        triangleCount += 3;
+                    }
+                } 
             }
 
             Mesh combinedmesh = new Mesh();
@@ -1662,7 +1686,7 @@ public class LevelLoader : MonoBehaviour
         }
     }
 
-    public void buildObjects()
+    public void BuildObjects()
     {
         for (int i = 0; i < starts.Count; i++)
         {
@@ -1676,189 +1700,163 @@ public class LevelLoader : MonoBehaviour
         }
     }
 
-    public void buildLists()
+    public void BuildLists()
     {
-        int planeStart = 0;
-
         int opaqueStart = 0;
-
         int collisionStart = 0;
-
-        int portalStart = 0;
-
         int edgeStart = 0;
+        int planeStart = 0;
+        int polygonStart = 0;
 
-        int portalnumber = 0;
-
-        int portalPlaneCount = 0;
-
-        for (int h = 0; h < sectors.Count; h++)
+        for (int sectorID = 0; sectorID < sectors.Count; sectorID++)
         {
-            int planeCount = 0;
-
-            int portalCount = 0;
-
-            int rendersCount = 0;
-
-            int collideCount = 0;
+            int polygonCount = 0;
 
             for (int e = 0; e < Plane.Count; e++)
             {
-                if (Plane[e] == h)
+                if (Plane[e] != sectorID)
                 {
-                    Mesh mesh = meshes[e];
-
-                    MathematicalPlane sectorplane = new MathematicalPlane();
-
-                    sectorplane.normal = mesh.normals[0];
-                    sectorplane.distance = -Vector3.Dot(mesh.normals[0], mesh.vertices[0]);
-
-                    LevelLists.planes.Add(sectorplane);
-
-                    planeCount += 1;
+                    continue;
                 }
+                    
+                PolygonMeta meta = new PolygonMeta();
+                Mesh mesh = meshes[e];
 
-                if (Plane[e] == h && Portal[e] != -1)
+                if (Portal[e] != -1)
                 {
                     int edgeCount = 0;
 
-                    Mesh mesh = meshes[e];
-
-                    PortalMeta portalMeta = new PortalMeta();
-
-                    FrustumMeta portalfrustum = new FrustumMeta();
-
-                    for (int x = 0; x < mesh.vertices.Length; x++)
+                    for (int x = 0; x < mesh.vertexCount; x++)
                     {
-                        int y = (x + 1) % mesh.vertices.Length;
+                        int y = (x + 1) % mesh.vertexCount;
 
-                        Edge line = new Edge();
-
-                        line.start = mesh.vertices[x];
-                        line.end = mesh.vertices[y];
+                        Edge line = new Edge
+                        {
+                            start = mesh.vertices[x],
+                            end = mesh.vertices[y]
+                        };
 
                         LevelLists.edges.Add(line);
 
                         edgeCount += 1;
                     }
 
-                    portalMeta.lineStartIndex = edgeStart;
-
-                    portalMeta.lineCount = edgeCount;
-
-                    portalMeta.portalPlane = portalPlaneCount;
-
-                    portalMeta.sectorID = h;
-
-                    portalMeta.connectedSectorID = Portal[e];
-
-                    portalMeta.portalID = portalnumber;
-
-                    LevelLists.portals.Add(portalMeta);
-
-                    portalfrustum.planeStartIndex = 0;
-
-                    portalfrustum.planeCount = 0;
-
-                    portalfrustum.frustumID = portalnumber;
-
-                    LevelLists.frustums.Add(portalfrustum);
-
+                    meta.lineStartIndex = edgeStart;
+                    meta.lineCount = edgeCount;
                     edgeStart += edgeCount;
-
-                    portalCount += 1;
-
-                    portalnumber += 1;
+                }
+                else
+                {
+                    meta.lineStartIndex = -1;
+                    meta.lineCount = -1;
                 }
 
-                if (Plane[e] == h)
+                MathematicalPlane plane = new MathematicalPlane
                 {
-                    portalPlaneCount += 1;
-                }
+                    normal = mesh.normals[0],
+                    distance = -Vector3.Dot(mesh.normals[0], mesh.vertices[0])
+                };
 
-                if (Render[e] == h)
+                LevelLists.planes.Add(plane);
+                meta.plane = planeStart;
+                planeStart += 1;
+
+                if (Render[e] == sectorID)
                 {
-                    Mesh mesh = meshes[e];
-
+                    int count = 0;
                     uvVector3.Clear();
-
                     mesh.GetUVs(0, uvVector3);
 
                     for (int i = 0; i < mesh.triangles.Length; i += 3)
                     {
-                        Triangle otriangle = new Triangle();
+                        Triangle t = new Triangle
+                        {
+                            v0 = mesh.vertices[mesh.triangles[i]],
+                            v1 = mesh.vertices[mesh.triangles[i + 1]],
+                            v2 = mesh.vertices[mesh.triangles[i + 2]],
+                            uv0 = uvVector3[mesh.triangles[i]],
+                            uv1 = uvVector3[mesh.triangles[i + 1]],
+                            uv2 = uvVector3[mesh.triangles[i + 2]],
+                            n0 = mesh.normals[mesh.triangles[i]],
+                            n1 = mesh.normals[mesh.triangles[i + 1]],
+                            n2 = mesh.normals[mesh.triangles[i + 2]]
+                        };
 
-                        otriangle.v0 = mesh.vertices[mesh.triangles[i]];
-                        otriangle.v1 = mesh.vertices[mesh.triangles[i + 1]];
-                        otriangle.v2 = mesh.vertices[mesh.triangles[i + 2]];
-                        otriangle.uv0 = uvVector3[mesh.triangles[i]];
-                        otriangle.uv1 = uvVector3[mesh.triangles[i + 1]];
-                        otriangle.uv2 = uvVector3[mesh.triangles[i + 2]];
-                        otriangle.n0 = mesh.normals[mesh.triangles[i]];
-                        otriangle.n1 = mesh.normals[mesh.triangles[i + 1]];
-                        otriangle.n2 = mesh.normals[mesh.triangles[i + 2]];
-
-                        LevelLists.opaques.Add(otriangle);
-
-                        rendersCount += 1;
+                        LevelLists.opaques.Add(t);
+                        count += 1;
                     }
+
+                    meta.opaqueStartIndex = opaqueStart;
+                    meta.opaqueCount = count;
+                    opaqueStart += count;
+                }
+                else
+                {
+                    meta.opaqueStartIndex = -1;
+                    meta.opaqueCount = -1;
                 }
 
-                if (Collision[e] == h)
+                if (Collision[e] == sectorID)
                 {
-                    Mesh mesh = meshes[e];
+                    int count = 0;
 
                     for (int i = 0; i < mesh.triangles.Length; i += 3)
                     {
-                        Triangle ctriangle = new Triangle();
+                        Triangle t = new Triangle
+                        {
+                            v0 = mesh.vertices[mesh.triangles[i]],
+                            v1 = mesh.vertices[mesh.triangles[i + 1]],
+                            v2 = mesh.vertices[mesh.triangles[i + 2]]
+                        };
 
-                        ctriangle.v0 = mesh.vertices[mesh.triangles[i]];
-                        ctriangle.v1 = mesh.vertices[mesh.triangles[i + 1]];
-                        ctriangle.v2 = mesh.vertices[mesh.triangles[i + 2]];
-
-                        LevelLists.collisions.Add(ctriangle);
-
-                        collideCount += 1;
+                        LevelLists.collisions.Add(t);
+                        count += 1;
                     }
+
+                    meta.collisionStartIndex = collisionStart;
+                    meta.collisionCount = count;
+                    collisionStart += count;
                 }
+                else
+                {
+                    meta.collisionStartIndex = -1;
+                    meta.collisionCount = -1;
+                }
+
+                meta.sectorID = sectorID;
+                meta.connectedSectorID = Portal[e];
+                meta.connectedStartIndex = -1;
+                meta.connectedCount = -1;
+
+                LevelLists.polygons.Add(meta);
+                polygonCount += 1;
             }
 
-            SectorMeta sectorMeta = new SectorMeta();
-
-            sectorMeta.planeStartIndex = planeStart;
-            sectorMeta.planeCount = planeCount;
-
-            sectorMeta.opaqueStartIndex = opaqueStart;
-            sectorMeta.opaqueCount = rendersCount;
-
-            sectorMeta.collisionStartIndex = collisionStart;
-            sectorMeta.collisionCount = collideCount;
-
-            sectorMeta.portalStartIndex = portalStart;
-            sectorMeta.portalCount = portalCount;
-
-            sectorMeta.sectorID = h;
+            SectorMeta sectorMeta = new SectorMeta
+            {
+                sectorID = sectorID,
+                polygonStartIndex = polygonStart,
+                polygonCount = polygonCount,
+                planeStartIndex = 0,
+                planeCount = 4
+            };
 
             LevelLists.sectors.Add(sectorMeta);
-
-            planeStart += planeCount;
-
-            opaqueStart += rendersCount;
-
-            portalStart += portalCount;
-
-            collisionStart += collideCount;
+            polygonStart += polygonCount;
         }
 
-        FrustumMeta camfrustum = new FrustumMeta();
+        for (int i = 0; i < LevelLists.polygons.Count; i++)
+        {
+            PolygonMeta polygon = LevelLists.polygons[i];
 
-        camfrustum.planeStartIndex = 0;
-
-        camfrustum.planeCount = 0;
-
-        camfrustum.frustumID = portalnumber + 1;
-
-        LevelLists.frustums.Add(camfrustum);
+            if (polygon.connectedSectorID != -1)
+            {
+                SectorMeta connected = LevelLists.sectors[polygon.connectedSectorID];
+                polygon.connectedStartIndex = connected.polygonStartIndex;
+                polygon.connectedCount = connected.polygonCount;
+                LevelLists.polygons[i] = polygon;
+            }
+        }
 
         Debug.Log("Level built successfully!");
     }

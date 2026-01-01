@@ -127,9 +127,6 @@ public class LevelLoader : MonoBehaviour
     private SectorMeta NextSector;
     private List<SectorMeta> Sectors = new List<SectorMeta>();
     private List<SectorMeta> OldSectors = new List<SectorMeta>();
-    private List<Vector3> OutTriangleVertices = new List<Vector3>();
-    private List<Vector3> OutTriangleTextures = new List<Vector3>();
-    private List<Vector3> OutTriangleNormals = new List<Vector3>();
     private List<Vector3> OutEdgeVertices = new List<Vector3>();
     private bool radius;
     private bool check;
@@ -421,28 +418,14 @@ public class LevelLoader : MonoBehaviour
 
     public void ClipTrianglesWithPlanes(SectorMeta planes, List<Triangle> verttexnorm, int startIndex, int count)
     {
-        OutTriangleVertices.Clear();
-        OutTriangleTextures.Clear();
-        OutTriangleNormals.Clear();
-
         for (int a = startIndex; a < count; a++)
         {
-            Triangle tri = verttexnorm[a];
-            Vector3 Edge1 = tri.v1 - tri.v0;
-            Vector3 Edge2 = tri.v2 - tri.v0;
-            Vector3 Normal = Vector3.Cross(Edge1, Edge2).normalized;
-            Vector3 CamDirection = (CamPoint - tri.v0).normalized;
-            float triangleDirection = Vector3.Dot(Normal, CamDirection);
-
-            if (triangleDirection < 0)
-            {
-                continue;
-            }
-
             int processverticescount = 0;
             int processtexturescount = 0;
             int processnormalscount = 0;
             int processboolcount = 0;
+
+            Triangle tri = verttexnorm[a];
 
             processvertices[processverticescount] = tri.v0;
             processvertices[processverticescount + 1] = tri.v1;
@@ -705,15 +688,19 @@ public class LevelLoader : MonoBehaviour
             {
                 if (processbool[e] == true && processbool[e + 1] == true && processbool[e + 2] == true)
                 {
-                    OutTriangleVertices.Add(processvertices[e]);
-                    OutTriangleVertices.Add(processvertices[e + 1]);
-                    OutTriangleVertices.Add(processvertices[e + 2]);
-                    OutTriangleTextures.Add(processtextures[e]);
-                    OutTriangleTextures.Add(processtextures[e + 1]);
-                    OutTriangleTextures.Add(processtextures[e + 2]);
-                    OutTriangleNormals.Add(processnormals[e]);
-                    OutTriangleNormals.Add(processnormals[e + 1]);
-                    OutTriangleNormals.Add(processnormals[e + 2]);
+                    OpaqueVertices.Add(processvertices[e]);
+                    OpaqueVertices.Add(processvertices[e + 1]);
+                    OpaqueVertices.Add(processvertices[e + 2]);
+                    OpaqueTextures.Add(processtextures[e]);
+                    OpaqueTextures.Add(processtextures[e + 1]);
+                    OpaqueTextures.Add(processtextures[e + 2]);
+                    OpaqueNormals.Add(processnormals[e]);
+                    OpaqueNormals.Add(processnormals[e + 1]);
+                    OpaqueNormals.Add(processnormals[e + 2]);
+                    OpaqueTriangles.Add(combinedTriangles);
+                    OpaqueTriangles.Add(combinedTriangles + 1);
+                    OpaqueTriangles.Add(combinedTriangles + 2);
+                    combinedTriangles += 3;
                 }
             }
         }
@@ -964,21 +951,6 @@ public class LevelLoader : MonoBehaviour
         }
     }
 
-    public void GetTriangles(SectorMeta ASector, PolygonMeta BPolygon)
-    {
-        ClipTrianglesWithPlanes(ASector, LevelLists.opaques, BPolygon.opaqueStartIndex, BPolygon.opaqueStartIndex + BPolygon.opaqueCount);
-
-        for (int e = 0; e < OutTriangleVertices.Count; e++)
-        {
-            OpaqueVertices.Add(OutTriangleVertices[e]);
-            OpaqueTextures.Add(OutTriangleTextures[e]);
-            OpaqueNormals.Add(OutTriangleNormals[e]);
-            OpaqueTriangles.Add(e + combinedTriangles);
-        }
-
-        combinedTriangles += OutTriangleVertices.Count;
-    }
-
     public void GetPortals(SectorMeta ASector)
     {
         PortalQueue.Enqueue(ASector);
@@ -1007,7 +979,7 @@ public class LevelLoader : MonoBehaviour
 
                 if (connectedsector == -1)
                 {
-                    GetTriangles(sector, polygon);
+                    ClipTrianglesWithPlanes(sector, LevelLists.opaques, polygon.opaqueStartIndex, polygon.opaqueStartIndex + polygon.opaqueCount);
                 }
                 else
                 {

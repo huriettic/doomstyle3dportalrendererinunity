@@ -890,6 +890,11 @@ public class LevelLoader : MonoBehaviour
 
     public void GetSectors(SectorMeta ASector)
     {
+        for (int i = 0; i < OldSectors.Count; i++)
+        {
+            Physics.IgnoreCollision(Player, CollisionSectors[OldSectors[i].sectorID], true);
+        }
+
         SectorQueue.Enqueue(ASector);
 
         while (SectorQueue.Count > 0)
@@ -897,6 +902,8 @@ public class LevelLoader : MonoBehaviour
             SectorMeta sector = SectorQueue.Dequeue();
 
             Sectors.Add(sector);
+
+            Physics.IgnoreCollision(Player, CollisionSectors[sector.sectorID], false);
 
             for (int i = sector.polygonStartIndex; i < sector.polygonStartIndex + sector.polygonCount; i++)
             {
@@ -922,31 +929,21 @@ public class LevelLoader : MonoBehaviour
                 }
             }
 
+            if (SectorsDoNotEqual())
+            {
+                OldSectors.Clear();
+
+                for (int i = 0; i < Sectors.Count; i++)
+                {
+                    OldSectors.Add(Sectors[i]);
+                }
+            }
+
             check = CheckSector(sector, CamPoint);
 
             if (check)
             {
                 CurrentSector = sector;
-
-                if (SectorsDoNotEqual())
-                {
-                    for (int i = 0; i < OldSectors.Count; i++)
-                    {
-                        Physics.IgnoreCollision(Player, CollisionSectors[OldSectors[i].sectorID], true);
-                    }
-
-                    for (int i = 0; i < Sectors.Count; i++)
-                    {
-                        Physics.IgnoreCollision(Player, CollisionSectors[Sectors[i].sectorID], false);
-                    }
-
-                    OldSectors.Clear();
-
-                    for (int i = 0; i < Sectors.Count; i++)
-                    {
-                        OldSectors.Add(Sectors[i]);
-                    }
-                }
             }
         }
     }

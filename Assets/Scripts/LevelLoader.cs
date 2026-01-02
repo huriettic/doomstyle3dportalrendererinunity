@@ -237,8 +237,6 @@ public class LevelLoader : MonoBehaviour
         {
             CamPoint = Cam.transform.position;
 
-            Sectors.Clear();
-
             GetSectors(CurrentSector);
 
             MathematicalCamPlanes.Clear();
@@ -890,6 +888,8 @@ public class LevelLoader : MonoBehaviour
 
     public void GetSectors(SectorMeta ASector)
     {
+        Sectors.Clear();
+
         for (int i = 0; i < OldSectors.Count; i++)
         {
             Physics.IgnoreCollision(Player, CollisionSectors[OldSectors[i].sectorID], true);
@@ -929,21 +929,21 @@ public class LevelLoader : MonoBehaviour
                 }
             }
 
-            if (SectorsDoNotEqual())
-            {
-                OldSectors.Clear();
-
-                for (int i = 0; i < Sectors.Count; i++)
-                {
-                    OldSectors.Add(Sectors[i]);
-                }
-            }
-
             check = CheckSector(sector, CamPoint);
 
             if (check)
             {
                 CurrentSector = sector;
+            }
+        }
+
+        if (SectorsDoNotEqual())
+        {
+            OldSectors.Clear();
+
+            for (int i = 0; i < Sectors.Count; i++)
+            {
+                OldSectors.Add(Sectors[i]);
             }
         }
     }

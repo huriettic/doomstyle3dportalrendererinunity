@@ -66,7 +66,9 @@ public struct StartPos
 
 public class LevelLoader : MonoBehaviour
 {
-    public string Name = "map-clear";
+    public string Name = "twohallways-clear";
+
+    public bool debug = false;
 
     public float speed = 7f;
     public float jumpHeight = 2f;
@@ -193,21 +195,16 @@ public class LevelLoader : MonoBehaviour
 
         BuildObjects();
 
-        BuildCollsionSectors();
+        BuildColliders();
+
+        if (debug == true)
+        {
+            BuildEdges();
+
+            BuildOpaques();
+        }
 
         Playerstart();
-
-        //BuildEdges();
-
-        //BuildOpaques();
-
-        //OpaqueObjects = new GameObject("Opaque Meshes");
-
-        //EdgeObjects = new GameObject("Portal Meshes");
-
-        //linematerial = new Material(Shader.Find("Standard"));
-
-        //linematerial.color = Color.cyan;
 
         processbool = new bool[256];
 
@@ -231,40 +228,43 @@ public class LevelLoader : MonoBehaviour
 
     void Update()
     {
-        PlayerInput();
-
-        if (Cam.transform.hasChanged)
+        if (debug == false)
         {
-            CamPoint = Cam.transform.position;
+            PlayerInput();
 
-            GetSectors(CurrentSector);
+            if (Cam.transform.hasChanged)
+            {
+                CamPoint = Cam.transform.position;
 
-            MathematicalCamPlanes.Clear();
+                GetSectors(CurrentSector);
 
-            ReadFrustumPlanes(Cam, MathematicalCamPlanes);
+                MathematicalCamPlanes.Clear();
 
-            MathematicalCamPlanes.RemoveAt(5);
+                ReadFrustumPlanes(Cam, MathematicalCamPlanes);
 
-            MathematicalCamPlanes.RemoveAt(4);
+                MathematicalCamPlanes.RemoveAt(5);
 
-            OpaqueVertices.Clear();
+                MathematicalCamPlanes.RemoveAt(4);
 
-            OpaqueTextures.Clear();
+                OpaqueVertices.Clear();
 
-            OpaqueTriangles.Clear();
+                OpaqueTextures.Clear();
 
-            OpaqueNormals.Clear();
+                OpaqueTriangles.Clear();
 
-            combinedTriangles = 0;
+                OpaqueNormals.Clear();
 
-            MaxDepth = 0;
+                combinedTriangles = 0;
 
-            GetPortals(CurrentSector);
+                MaxDepth = 0;
 
-            SetRenderMesh();
+                GetPortals(CurrentSector);
 
-            Cam.transform.hasChanged = false;
-        }
+                SetRenderMesh();
+
+                Cam.transform.hasChanged = false;
+            }
+        }  
     }
 
     void Awake()
@@ -288,29 +288,42 @@ public class LevelLoader : MonoBehaviour
 
     public void CreateGameObjects()
     {
-        CollisionObjects = new GameObject("Collision Meshes");
-
         Shader shader = Resources.Load<Shader>("TEXARRAYSHADER");
 
         opaquematerial = new Material(shader);
 
         opaquematerial.mainTexture = Resources.Load<Texture2DArray>("Textures");
 
-        opaquemesh = new Mesh();
+        CollisionObjects = new GameObject("Collision Meshes");
 
-        opaquemesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+        if (debug == true)
+        {
+            OpaqueObjects = new GameObject("Opaque Meshes");
 
-        opaquemesh.MarkDynamic();
+            EdgeObjects = new GameObject("Portal Meshes");
 
-        RenderMesh = new GameObject("Render Mesh");
+            linematerial = new Material(shader);
 
-        RenderMesh.AddComponent<MeshFilter>();
-        RenderMesh.AddComponent<MeshRenderer>();
+            linematerial.color = Color.cyan;
+        }
+        else
+        {
+            opaquemesh = new Mesh();
 
-        Renderer MeshRend = RenderMesh.GetComponent<Renderer>();
-        MeshRend.sharedMaterial = opaquematerial;
-        MeshRend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        RenderMesh.GetComponent<MeshFilter>().mesh = opaquemesh;
+            opaquemesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+
+            opaquemesh.MarkDynamic();
+
+            RenderMesh = new GameObject("Render Mesh");
+
+            RenderMesh.AddComponent<MeshFilter>();
+            RenderMesh.AddComponent<MeshRenderer>();
+
+            Renderer MeshRend = RenderMesh.GetComponent<Renderer>();
+            MeshRend.sharedMaterial = opaquematerial;
+            MeshRend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            RenderMesh.GetComponent<MeshFilter>().mesh = opaquemesh;
+        }   
     }
 
     private MathematicalPlane FromVec4(Vector4 aVec)
@@ -327,7 +340,10 @@ public class LevelLoader : MonoBehaviour
     public void SetFrustumPlanes(List<MathematicalPlane> planes, Matrix4x4 m)
     {
         if (planes == null)
+        {
             return;
+        }
+        
         var r0 = m.GetRow(0);
         var r1 = m.GetRow(1);
         var r2 = m.GetRow(2);
@@ -1608,7 +1624,7 @@ public class LevelLoader : MonoBehaviour
         }
     }
 
-    public void BuildCollsionSectors()
+    public void BuildColliders()
     {
         for (int i = 0; i < LevelLists.sectors.Count; i++)
         {

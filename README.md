@@ -6,7 +6,7 @@ The project uses Bisqwit's portal rendering tutorial level.
 
 
 
-[Watch the video on YouTube](https://www.youtube.com/watch?v=HQYsFshbkYw)
+[Watch the video on YouTube.](https://www.youtube.com/watch?v=HQYsFshbkYw)
 
 
 

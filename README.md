@@ -22,7 +22,7 @@ Add the level file map-clear.txt, which is not included in this repository or us
 
 
 
-You can get map-clear.txt from the video and put it in the Resources folder in the project.
+You can get map-clear.txt from the video in the description and put it in the Resources folder in the project.
 
 
 

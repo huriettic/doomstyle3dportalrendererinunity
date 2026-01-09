@@ -36,9 +36,6 @@ public struct PolygonMeta
     public int collisionStartIndex;
     public int collisionCount;
 
-    public int connectedStartIndex;
-    public int connectedCount;
-
     public int connectedSectorID;
     public int sectorID;
 
@@ -996,9 +993,9 @@ public class LevelLoader : MonoBehaviour
                 }
                 else
                 {
-                    int connectedstart = polygon.connectedStartIndex;
+                    int connectedstart = LevelLists.sectors[connectedsector].polygonStartIndex;
 
-                    int connectedcount = polygon.connectedCount;
+                    int connectedcount = LevelLists.sectors[connectedsector].polygonCount;
 
                     if (SectorsContains(LevelLists.sectors[connectedsector].sectorID))
                     {
@@ -1693,32 +1690,32 @@ public class LevelLoader : MonoBehaviour
         int planeStart = 0;
         int polygonStart = 0;
 
-        for (int sectorID = 0; sectorID < sectors.Count; sectorID++)
+        for (int a = 0; a < sectors.Count; a++)
         {
             int polygonCount = 0;
 
-            for (int e = 0; e < Plane.Count; e++)
+            for (int b = 0; b < Plane.Count; b++)
             {
-                if (Plane[e] != sectorID)
+                if (Plane[b] != a)
                 {
                     continue;
                 }
                     
                 PolygonMeta meta = new PolygonMeta();
-                Mesh mesh = meshes[e];
+                Mesh mesh = meshes[b];
 
-                if (Portal[e] != -1)
+                if (Portal[b] != -1)
                 {
                     int edgeCount = 0;
 
-                    for (int x = 0; x < mesh.vertexCount; x++)
+                    for (int c = 0; c < mesh.vertexCount; c++)
                     {
-                        int y = (x + 1) % mesh.vertexCount;
+                        int d = (c + 1) % mesh.vertexCount;
 
                         Edge line = new Edge
                         {
-                            start = mesh.vertices[x],
-                            end = mesh.vertices[y]
+                            start = mesh.vertices[c],
+                            end = mesh.vertices[d]
                         };
 
                         LevelLists.edges.Add(line);
@@ -1746,25 +1743,25 @@ public class LevelLoader : MonoBehaviour
                 meta.plane = planeStart;
                 planeStart += 1;
 
-                if (Render[e] == sectorID)
+                if (Render[b] == a)
                 {
                     int count = 0;
                     uvVector3.Clear();
                     mesh.GetUVs(0, uvVector3);
 
-                    for (int i = 0; i < mesh.triangles.Length; i += 3)
+                    for (int c = 0; c < mesh.triangles.Length; c += 3)
                     {
                         Triangle t = new Triangle
                         {
-                            v0 = mesh.vertices[mesh.triangles[i]],
-                            v1 = mesh.vertices[mesh.triangles[i + 1]],
-                            v2 = mesh.vertices[mesh.triangles[i + 2]],
-                            uv0 = uvVector3[mesh.triangles[i]],
-                            uv1 = uvVector3[mesh.triangles[i + 1]],
-                            uv2 = uvVector3[mesh.triangles[i + 2]],
-                            n0 = mesh.normals[mesh.triangles[i]],
-                            n1 = mesh.normals[mesh.triangles[i + 1]],
-                            n2 = mesh.normals[mesh.triangles[i + 2]]
+                            v0 = mesh.vertices[mesh.triangles[c]],
+                            v1 = mesh.vertices[mesh.triangles[c + 1]],
+                            v2 = mesh.vertices[mesh.triangles[c + 2]],
+                            uv0 = uvVector3[mesh.triangles[c]],
+                            uv1 = uvVector3[mesh.triangles[c + 1]],
+                            uv2 = uvVector3[mesh.triangles[c + 2]],
+                            n0 = mesh.normals[mesh.triangles[c]],
+                            n1 = mesh.normals[mesh.triangles[c + 1]],
+                            n2 = mesh.normals[mesh.triangles[c + 2]]
                         };
 
                         LevelLists.opaques.Add(t);
@@ -1781,17 +1778,23 @@ public class LevelLoader : MonoBehaviour
                     meta.opaqueCount = -1;
                 }
 
-                if (Collision[e] == sectorID)
+                if (Collision[b] == a)
                 {
                     int count = 0;
 
-                    for (int i = 0; i < mesh.triangles.Length; i += 3)
+                    for (int c = 0; c < mesh.triangles.Length; c += 3)
                     {
                         Triangle t = new Triangle
                         {
-                            v0 = mesh.vertices[mesh.triangles[i]],
-                            v1 = mesh.vertices[mesh.triangles[i + 1]],
-                            v2 = mesh.vertices[mesh.triangles[i + 2]]
+                            v0 = mesh.vertices[mesh.triangles[c]],
+                            v1 = mesh.vertices[mesh.triangles[c + 1]],
+                            v2 = mesh.vertices[mesh.triangles[c + 2]],
+                            uv0 = Vector3.zero,
+                            uv1 = Vector3.zero,
+                            uv2 = Vector3.zero,
+                            n0 = Vector3.zero,
+                            n1 = Vector3.zero,
+                            n2 = Vector3.zero
                         };
 
                         LevelLists.collisions.Add(t);
@@ -1808,10 +1811,8 @@ public class LevelLoader : MonoBehaviour
                     meta.collisionCount = -1;
                 }
 
-                meta.sectorID = sectorID;
-                meta.connectedSectorID = Portal[e];
-                meta.connectedStartIndex = -1;
-                meta.connectedCount = -1;
+                meta.sectorID = a;
+                meta.connectedSectorID = Portal[b];
 
                 LevelLists.polygons.Add(meta);
                 polygonCount += 1;
@@ -1819,7 +1820,7 @@ public class LevelLoader : MonoBehaviour
 
             SectorMeta sectorMeta = new SectorMeta
             {
-                sectorID = sectorID,
+                sectorID = a,
                 polygonStartIndex = polygonStart,
                 polygonCount = polygonCount,
                 planeStartIndex = 0,
@@ -1828,19 +1829,6 @@ public class LevelLoader : MonoBehaviour
 
             LevelLists.sectors.Add(sectorMeta);
             polygonStart += polygonCount;
-        }
-
-        for (int i = 0; i < LevelLists.polygons.Count; i++)
-        {
-            PolygonMeta polygon = LevelLists.polygons[i];
-
-            if (polygon.connectedSectorID != -1)
-            {
-                SectorMeta connected = LevelLists.sectors[polygon.connectedSectorID];
-                polygon.connectedStartIndex = connected.polygonStartIndex;
-                polygon.connectedCount = connected.polygonCount;
-                LevelLists.polygons[i] = polygon;
-            }
         }
 
         Debug.Log("Level built successfully!");

@@ -2,7 +2,7 @@
 
 
 
-The project uses Bisqwit's portal rendering tutorial level.
+The project can play Bisqwit's portal rendering tutorial level.
 
 
 

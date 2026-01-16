@@ -365,20 +365,22 @@ public class LevelLoader : MonoBehaviour
 
         int IndexCount = 0;
 
-        int count = vertices.Count;
-        for (int i = 0; i < count; i += 2)
+        for (int i = 0; i < vertices.Count; i += 2)
         {
             Vector3 p1 = vertices[i];
             Vector3 p2 = vertices[i + 1];
             Vector3 normal = Vector3.Cross(p1 - p2, viewPos - p2);
             float magnitude = normal.magnitude;
+
+            if (magnitude < 0.01f)
+            {
+                continue;
+            }
+                
             Vector3 normalized = normal / magnitude;
 
-            if (magnitude > 0.01f)
-            {
-                MathematicalCamPlanes.Add(new MathematicalPlane { normal = normalized, distance = -Vector3.Dot(normalized, p1) });
-                IndexCount += 1;
-            }
+            MathematicalCamPlanes.Add(new MathematicalPlane { normal = normalized, distance = -Vector3.Dot(normalized, p1) });
+            IndexCount += 1;
         }
 
         NextSector.polygonStartIndex = polygonStart;

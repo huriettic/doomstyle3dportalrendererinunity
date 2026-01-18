@@ -359,37 +359,50 @@ public class LevelLoader : MonoBehaviour
         SetFrustumPlanes(planes, cam.projectionMatrix * cam.worldToCameraMatrix);
     }
 
-    public void SetClippingPlanes(List<Vector3> vertices, int portalnumber, int polygonStart, int polygonCount, Vector3 viewPos)
+    public void SetClippingPlanes(bool contains, int portalnumber, int polygonStart, int polygonCount, Vector3 viewPos)
     {
-        int StartIndex = MathematicalCamPlanes.Count;
-
-        int IndexCount = 0;
-
-        for (int i = 0; i < vertices.Count; i += 2)
+        if (contains)
         {
-            Vector3 p1 = vertices[i];
-            Vector3 p2 = vertices[i + 1];
-            Vector3 normal = Vector3.Cross(p1 - p2, viewPos - p2);
-            float magnitude = normal.magnitude;
+            NextSector.polygonStartIndex = polygonStart;
+            NextSector.polygonCount = polygonCount;
 
-            if (magnitude < 0.01f)
-            {
-                continue;
-            }
-                
-            Vector3 normalized = normal / magnitude;
+            NextSector.planeStartIndex = 0;
+            NextSector.planeCount = 4;
 
-            MathematicalCamPlanes.Add(new MathematicalPlane { normal = normalized, distance = -Vector3.Dot(normalized, p1) });
-            IndexCount += 1;
+            NextSector.sectorID = portalnumber;
         }
+        else
+        {
+            int StartIndex = MathematicalCamPlanes.Count;
 
-        NextSector.polygonStartIndex = polygonStart;
-        NextSector.polygonCount = polygonCount;
+            int IndexCount = 0;
 
-        NextSector.planeStartIndex = StartIndex;
-        NextSector.planeCount = IndexCount;
+            for (int i = 0; i < OutEdgeVertices.Count; i += 2)
+            {
+                Vector3 p1 = OutEdgeVertices[i];
+                Vector3 p2 = OutEdgeVertices[i + 1];
+                Vector3 normal = Vector3.Cross(p1 - p2, viewPos - p2);
+                float magnitude = normal.magnitude;
 
-        NextSector.sectorID = portalnumber;
+                if (magnitude < 0.01f)
+                {
+                    continue;
+                }
+
+                Vector3 normalized = normal / magnitude;
+
+                MathematicalCamPlanes.Add(new MathematicalPlane { normal = normalized, distance = -Vector3.Dot(normalized, p1) });
+                IndexCount += 1;
+            }
+
+            NextSector.polygonStartIndex = polygonStart;
+            NextSector.polygonCount = polygonCount;
+
+            NextSector.planeStartIndex = StartIndex;
+            NextSector.planeCount = IndexCount;
+
+            NextSector.sectorID = portalnumber;
+        } 
     }
 
     public void PlayerInput()
@@ -484,9 +497,9 @@ public class LevelLoader : MonoBehaviour
                     Vector3 n1 = processnormals[c + 1];
                     Vector3 n2 = processnormals[c + 2];
 
-                    float d0 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], processvertices[c]);
-                    float d1 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], processvertices[c + 1]);
-                    float d2 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], processvertices[c + 2]);
+                    float d0 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], v0);
+                    float d1 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], v1);
+                    float d2 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], v2);
 
                     bool b0 = d0 >= 0;
                     bool b1 = d1 >= 0;
@@ -756,8 +769,8 @@ public class LevelLoader : MonoBehaviour
                 Vector3 p1 = processvertices[c];
                 Vector3 p2 = processvertices[c + 1];
 
-                float d1 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], processvertices[c]);
-                float d2 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], processvertices[c + 1]);
+                float d1 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], p1);
+                float d2 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], p2);
 
                 bool b0 = d1 >= 0;
                 bool b1 = d2 >= 0;
@@ -996,35 +1009,31 @@ public class LevelLoader : MonoBehaviour
                     continue;
                 }
 
-                int connectedstart = LevelLists.sectors[connectedsector].polygonStartIndex;
+                SectorMeta sectorpolygon = LevelLists.sectors[connectedsector];
 
-                int connectedcount = LevelLists.sectors[connectedsector].polygonCount;
+                int connectedstart = sectorpolygon.polygonStartIndex;
 
-                if (SectorsContains(LevelLists.sectors[connectedsector].sectorID))
+                int connectedcount = sectorpolygon.polygonCount;
+
+                if (SectorsContains(sectorpolygon.sectorID))
                 {
+                    SetClippingPlanes(true, connectedsector, connectedstart, connectedcount, CamPoint);
+
                     MaxDepth += 1;
-
-                    NextSector.polygonStartIndex = connectedstart;
-                    NextSector.polygonCount = connectedcount;
-
-                    NextSector.planeStartIndex = sector.planeStartIndex;
-                    NextSector.planeCount = sector.planeCount;
-
-                    NextSector.sectorID = connectedsector;
 
                     PortalQueue.Enqueue(NextSector);
 
                     continue;
                 }
 
-                ClipEdgesWithPlanes(sector, LevelLists.polygons[i]);
+                ClipEdgesWithPlanes(sector, polygon);
 
                 if (OutEdgeVertices.Count < 6 || OutEdgeVertices.Count % 2 == 1)
                 {
                     continue;
                 }
 
-                SetClippingPlanes(OutEdgeVertices, connectedsector, connectedstart, connectedcount, CamPoint);
+                SetClippingPlanes(false, connectedsector, connectedstart, connectedcount, CamPoint);
 
                 MaxDepth += 1;
 

@@ -119,7 +119,8 @@ public class LevelLoader : MonoBehaviour
     private Vector3[] temporaryvertices;
     private Vector3[] temporarytextures;
     private Vector3[] temporarynormals;
-    private List<MathematicalPlane> MathematicalCamPlanes = new List<MathematicalPlane>();
+    private List<List<MathematicalPlane>> ListOfPlaneLists = new List<List<MathematicalPlane>>();
+    private List<List<SectorMeta>> ListOfSectorLists = new List<List<SectorMeta>>();
     private Camera Cam;
     private Vector3 CamPoint;
     private SectorMeta CurrentSector;
@@ -133,15 +134,12 @@ public class LevelLoader : MonoBehaviour
     private float planeDistance;
     private double Ceiling;
     private double Floor;
-    private int MaxDepth;
     private Plane LeftPlane;
     private Plane TopPlane;
     private List<Vector3> uvs = new List<Vector3>();
     private List<Vector3> flooruvs = new List<Vector3>();
     private List<Vector3> ceilinguvs = new List<Vector3>();
     private List<Vector3> OpaqueTextures = new List<Vector3>();
-    private Queue<SectorMeta> PortalQueue = new Queue<SectorMeta>();
-    private Queue<SectorMeta> SectorQueue = new Queue<SectorMeta>();
     private GameObject RenderMesh;
 
     [Serializable]
@@ -217,6 +215,16 @@ public class LevelLoader : MonoBehaviour
 
         temporarynormals = new Vector3[256];
 
+        for (int i = 0; i < 2; i++)
+        {
+            ListOfPlaneLists.Add(new List<MathematicalPlane>());
+        }
+
+        for (int i = 0; i < 2; i++)
+        {
+            ListOfSectorLists.Add(new List<SectorMeta>());
+        }
+
         for (int i = 0; i < LevelLists.sectors.Count; i++)
         {
             Physics.IgnoreCollision(Player, CollisionSectors[LevelLists.sectors[i].sectorID], true);
@@ -235,13 +243,13 @@ public class LevelLoader : MonoBehaviour
 
                 GetSectors(CurrentSector);
 
-                MathematicalCamPlanes.Clear();
+                ListOfPlaneLists[0].Clear();
 
-                ReadFrustumPlanes(Cam, MathematicalCamPlanes);
+                ReadFrustumPlanes(Cam, ListOfPlaneLists[0]);
 
-                MathematicalCamPlanes.RemoveAt(5);
+                ListOfPlaneLists[0].RemoveAt(5);
 
-                MathematicalCamPlanes.RemoveAt(4);
+                ListOfPlaneLists[0].RemoveAt(4);
 
                 OpaqueVertices.Clear();
 
@@ -253,9 +261,7 @@ public class LevelLoader : MonoBehaviour
 
                 combinedTriangles = 0;
 
-                MaxDepth = 0;
-
-                GetPortals(CurrentSector);
+                GetPolygons(CurrentSector);
 
                 SetRenderMesh();
 
@@ -359,24 +365,30 @@ public class LevelLoader : MonoBehaviour
         SetFrustumPlanes(planes, cam.projectionMatrix * cam.worldToCameraMatrix);
     }
 
-    public void SetClippingPlanes(bool contains, int portalnumber, int polygonStart, int polygonCount, Vector3 viewPos)
+    public void SetClippingPlanes(bool contains, int portalnumber, int polygonStart, int polygonCount, int side, Vector3 viewPos)
     {
+        int StartIndex = ListOfPlaneLists[side].Count;
+
+        int IndexCount = 0;
+
         if (contains)
         {
+            ReadFrustumPlanes(Cam, ListOfPlaneLists[side]);
+
+            ListOfPlaneLists[side].RemoveAt(ListOfPlaneLists[side].Count - 1);
+
+            ListOfPlaneLists[side].RemoveAt(ListOfPlaneLists[side].Count - 1);
+
             NextSector.polygonStartIndex = polygonStart;
             NextSector.polygonCount = polygonCount;
 
-            NextSector.planeStartIndex = 0;
-            NextSector.planeCount = 4;
+            NextSector.planeStartIndex = StartIndex;
+            NextSector.planeCount = ListOfPlaneLists[side].Count - StartIndex;
 
             NextSector.sectorID = portalnumber;
         }
         else
         {
-            int StartIndex = MathematicalCamPlanes.Count;
-
-            int IndexCount = 0;
-
             for (int i = 0; i < OutEdgeVertices.Count; i += 2)
             {
                 Vector3 p1 = OutEdgeVertices[i];
@@ -391,7 +403,7 @@ public class LevelLoader : MonoBehaviour
 
                 Vector3 normalized = normal / magnitude;
 
-                MathematicalCamPlanes.Add(new MathematicalPlane { normal = normalized, distance = -Vector3.Dot(normalized, p1) });
+                ListOfPlaneLists[side].Add(new MathematicalPlane { normal = normalized, distance = -Vector3.Dot(normalized, p1) });
                 IndexCount += 1;
             }
 
@@ -402,7 +414,7 @@ public class LevelLoader : MonoBehaviour
             NextSector.planeCount = IndexCount;
 
             NextSector.sectorID = portalnumber;
-        } 
+        }
     }
 
     public void PlayerInput()
@@ -442,7 +454,7 @@ public class LevelLoader : MonoBehaviour
         return Vector3.Dot(plane.normal, point) + plane.distance;
     }
 
-    public void ClipTrianglesWithPlanes(SectorMeta planes, List<Triangle> verttexnorm, int startIndex, int count)
+    public void ClipTrianglesWithPlanes(SectorMeta planes, List<Triangle> verttexnorm, int startIndex, int count, int side)
     {
         for (int a = startIndex; a < count; a++)
         {
@@ -497,9 +509,9 @@ public class LevelLoader : MonoBehaviour
                     Vector3 n1 = processnormals[c + 1];
                     Vector3 n2 = processnormals[c + 2];
 
-                    float d0 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], v0);
-                    float d1 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], v1);
-                    float d2 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], v2);
+                    float d0 = GetPlaneSignedDistanceToPoint(ListOfPlaneLists[side][b], v0);
+                    float d1 = GetPlaneSignedDistanceToPoint(ListOfPlaneLists[side][b], v1);
+                    float d2 = GetPlaneSignedDistanceToPoint(ListOfPlaneLists[side][b], v2);
 
                     bool b0 = d0 >= 0;
                     bool b1 = d1 >= 0;
@@ -732,7 +744,7 @@ public class LevelLoader : MonoBehaviour
         }
     }
 
-    public void ClipEdgesWithPlanes(SectorMeta planes, PolygonMeta portal)
+    public void ClipEdgesWithPlanes(SectorMeta planes, PolygonMeta portal, int side)
     {
         OutEdgeVertices.Clear();
 
@@ -769,8 +781,8 @@ public class LevelLoader : MonoBehaviour
                 Vector3 p1 = processvertices[c];
                 Vector3 p2 = processvertices[c + 1];
 
-                float d1 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], p1);
-                float d2 = GetPlaneSignedDistanceToPoint(MathematicalCamPlanes[b], p2);
+                float d1 = GetPlaneSignedDistanceToPoint(ListOfPlaneLists[side][b], p1);
+                float d2 = GetPlaneSignedDistanceToPoint(ListOfPlaneLists[side][b], p2);
 
                 bool b0 = d1 >= 0;
                 bool b1 = d2 >= 0;
@@ -916,128 +928,173 @@ public class LevelLoader : MonoBehaviour
 
     public void GetSectors(SectorMeta ASector)
     {
+        int sidea = 0;
+        int sideb = 1;
+
         Sectors.Clear();
 
-        for (int i = 0; i < OldSectors.Count; i++)
+        ListOfSectorLists[sidea].Clear();
+
+        ListOfSectorLists[sidea].Add(ASector);
+
+        for (int a = 0; a < OldSectors.Count; a++)
         {
-            Physics.IgnoreCollision(Player, CollisionSectors[OldSectors[i].sectorID], true);
+            Physics.IgnoreCollision(Player, CollisionSectors[OldSectors[a].sectorID], true);
         }
 
-        SectorQueue.Enqueue(ASector);
-
-        while (SectorQueue.Count > 0)
+        for (int b = 0; b < 4096; b++)
         {
-            SectorMeta sector = SectorQueue.Dequeue();
-
-            Sectors.Add(sector);
-
-            Physics.IgnoreCollision(Player, CollisionSectors[sector.sectorID], false);
-
-            for (int i = sector.polygonStartIndex; i < sector.polygonStartIndex + sector.polygonCount; i++)
+            if (b % 2 == 0)
             {
-                int connectedsector = LevelLists.polygons[i].connectedSectorID;
-
-                if (connectedsector == -1)
-                {
-                    continue;
-                }
-
-                SectorMeta portalsector = LevelLists.sectors[connectedsector];
-
-                if (SectorsContains(portalsector.sectorID))
-                {
-                    continue;
-                }
-
-                radius = CheckRadius(portalsector, CamPoint);
-
-                if (radius)
-                {
-                    SectorQueue.Enqueue(portalsector);
-                }
+                sidea = 0;
+                sideb = 1;
+            }
+            else
+            {
+                sidea = 1;
+                sideb = 0;
             }
 
-            check = CheckSector(sector, CamPoint);
+            ListOfSectorLists[sideb].Clear();
 
-            if (check)
+            if (ListOfSectorLists[sidea].Count == 0)
             {
-                CurrentSector = sector;
+                break;
             }
+
+            for (int c = 0; c < ListOfSectorLists[sidea].Count; c++)
+            {
+                SectorMeta sector = ListOfSectorLists[sidea][c];
+
+                Sectors.Add(sector);
+
+                Physics.IgnoreCollision(Player, CollisionSectors[sector.sectorID], false);
+
+                for (int d = sector.polygonStartIndex; d < sector.polygonStartIndex + sector.polygonCount; d++)
+                {
+                    int connectedsector = LevelLists.polygons[d].connectedSectorID;
+
+                    if (connectedsector == -1)
+                    {
+                        continue;
+                    }
+
+                    SectorMeta portalsector = LevelLists.sectors[connectedsector];
+
+                    if (SectorsContains(portalsector.sectorID))
+                    {
+                        continue;
+                    }
+
+                    radius = CheckRadius(portalsector, CamPoint);
+
+                    if (radius)
+                    {
+                        ListOfSectorLists[sideb].Add(portalsector);
+                    }
+                }
+
+                check = CheckSector(sector, CamPoint);
+
+                if (check)
+                {
+                    CurrentSector = sector;
+                }
+            }    
         }
 
         if (SectorsDoNotEqual())
         {
             OldSectors.Clear();
 
-            for (int i = 0; i < Sectors.Count; i++)
+            for (int e = 0; e < Sectors.Count; e++)
             {
-                OldSectors.Add(Sectors[i]);
+                OldSectors.Add(Sectors[e]);
             }
         }
     }
 
-    public void GetPortals(SectorMeta ASector)
+    public void GetPolygons(SectorMeta ASector)
     {
-        PortalQueue.Enqueue(ASector);
+        int sidea = 0;
+        int sideb = 1;
 
-        while (PortalQueue.Count > 0)
+        ListOfSectorLists[sidea].Clear();
+
+        ListOfSectorLists[sidea].Add(ASector);
+
+        for (int a = 0; a < 4096; a++)
         {
-            SectorMeta sector = PortalQueue.Dequeue();
-
-            for (int i = sector.polygonStartIndex; i < sector.polygonStartIndex + sector.polygonCount; i++)
+            if (a % 2 == 0)
             {
-                if (MaxDepth > 4096)
+                sidea = 0;
+                sideb = 1;
+            }
+            else
+            {
+                sidea = 1;
+                sideb = 0;
+            }
+
+            ListOfPlaneLists[sideb].Clear();
+
+            ListOfSectorLists[sideb].Clear();
+
+            if (ListOfSectorLists[sidea].Count == 0)
+            {
+                break;
+            }
+
+            for (int b = 0; b < ListOfSectorLists[sidea].Count; b++)
+            {
+                SectorMeta sector = ListOfSectorLists[sidea][b];
+
+                for (int c = sector.polygonStartIndex; c < sector.polygonStartIndex + sector.polygonCount; c++)
                 {
-                    continue;
+                    PolygonMeta polygon = LevelLists.polygons[c];
+
+                    planeDistance = GetPlaneSignedDistanceToPoint(LevelLists.planes[polygon.plane], CamPoint);
+
+                    if (planeDistance <= 0)
+                    {
+                        continue;
+                    }
+
+                    int connectedsector = polygon.connectedSectorID;
+
+                    if (connectedsector == -1)
+                    {
+                        ClipTrianglesWithPlanes(sector, LevelLists.opaques, polygon.opaqueStartIndex, polygon.opaqueStartIndex + polygon.opaqueCount, sidea);
+
+                        continue;
+                    }
+
+                    SectorMeta sectorpolygon = LevelLists.sectors[connectedsector];
+
+                    int connectedstart = sectorpolygon.polygonStartIndex;
+
+                    int connectedcount = sectorpolygon.polygonCount;
+
+                    if (SectorsContains(sectorpolygon.sectorID))
+                    {
+                        SetClippingPlanes(true, connectedsector, connectedstart, connectedcount, sideb, CamPoint);
+
+                        ListOfSectorLists[sideb].Add(NextSector);
+
+                        continue;
+                    }
+
+                    ClipEdgesWithPlanes(sector, polygon, sidea);
+
+                    if (OutEdgeVertices.Count < 6 || OutEdgeVertices.Count % 2 == 1)
+                    {
+                        continue;
+                    }
+
+                    SetClippingPlanes(false, connectedsector, connectedstart, connectedcount, sideb, CamPoint);
+
+                    ListOfSectorLists[sideb].Add(NextSector);
                 }
-
-                PolygonMeta polygon = LevelLists.polygons[i];
-
-                planeDistance = GetPlaneSignedDistanceToPoint(LevelLists.planes[polygon.plane], CamPoint);
-
-                if (planeDistance <= 0)
-                {
-                    continue;
-                }
-
-                int connectedsector = polygon.connectedSectorID;
-
-                if (connectedsector == -1)
-                {
-                    ClipTrianglesWithPlanes(sector, LevelLists.opaques, polygon.opaqueStartIndex, polygon.opaqueStartIndex + polygon.opaqueCount);
-
-                    continue;
-                }
-
-                SectorMeta sectorpolygon = LevelLists.sectors[connectedsector];
-
-                int connectedstart = sectorpolygon.polygonStartIndex;
-
-                int connectedcount = sectorpolygon.polygonCount;
-
-                if (SectorsContains(sectorpolygon.sectorID))
-                {
-                    SetClippingPlanes(true, connectedsector, connectedstart, connectedcount, CamPoint);
-
-                    MaxDepth += 1;
-
-                    PortalQueue.Enqueue(NextSector);
-
-                    continue;
-                }
-
-                ClipEdgesWithPlanes(sector, polygon);
-
-                if (OutEdgeVertices.Count < 6 || OutEdgeVertices.Count % 2 == 1)
-                {
-                    continue;
-                }
-
-                SetClippingPlanes(false, connectedsector, connectedstart, connectedcount, CamPoint);
-
-                MaxDepth += 1;
-
-                PortalQueue.Enqueue(NextSector);
             }
         }
     }

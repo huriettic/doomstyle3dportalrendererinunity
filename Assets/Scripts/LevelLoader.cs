@@ -281,7 +281,7 @@ public struct SectorsJob : IJobParallelFor
                                 float t2 = inD2 / (inD2 - outD);
 
                                 float3 vA = math.lerp(inV1, outV, t1);
-                                Vector3 vB = math.lerp(inV2, outV, t2);
+                                float3 vB = math.lerp(inV2, outV, t2);
 
                                 float3 uvA = math.lerp(inUV1, outUV, t1);
                                 float3 uvB = math.lerp(inUV2, outUV, t2);
@@ -569,7 +569,7 @@ public class LevelLoader : MonoBehaviour
     private Vector3 currentForce;
 
     private CharacterController Player;
-
+    private Collider playerCollider;
     private TopLevelLists LevelLists;
     private List<Vector2> vertices = new List<Vector2>();
     private List<int> triangles = new List<int>();
@@ -708,7 +708,7 @@ public class LevelLoader : MonoBehaviour
 
         for (int i = 0; i < LevelLists.sectors.Length; i++)
         {
-            Physics.IgnoreCollision(Player, ColliderSectors[LevelLists.sectors[i].sectorId], true);
+            Physics.IgnoreCollision(playerCollider, ColliderSectors[LevelLists.sectors[i].sectorId], true);
         }
     }
 
@@ -741,11 +741,12 @@ public class LevelLoader : MonoBehaviour
     void Awake()
     {
         Player = GameObject.Find("Player").GetComponent<CharacterController>();
+        playerCollider = Player.GetComponent<Collider>();
 
-        Player.GetComponent<CharacterController>().enabled = true;
+        Player.enabled = true;
+        playerCollider.enabled = true;
 
         Cursor.lockState = CursorLockMode.Locked;
-
         Cam = Camera.main;
     }
 
@@ -1002,7 +1003,7 @@ public class LevelLoader : MonoBehaviour
 
         for (int a = 0; a < oldContains.Length; a++)
         {
-            Physics.IgnoreCollision(Player, ColliderSectors[oldContains[a].sectorId], true);
+            Physics.IgnoreCollision(playerCollider, ColliderSectors[oldContains[a].sectorId], true);
         }
 
         for (int b = 0; b < 4096; b++)
@@ -1031,7 +1032,7 @@ public class LevelLoader : MonoBehaviour
 
                 contains.Add(sector);
 
-                Physics.IgnoreCollision(Player, ColliderSectors[sector.sectorId], false);
+                Physics.IgnoreCollision(playerCollider, ColliderSectors[sector.sectorId], false);
 
                 for (int d = sector.polygonStartIndex; d < sector.polygonStartIndex + sector.polygonCount; d++)
                 {
@@ -1322,7 +1323,6 @@ public class LevelLoader : MonoBehaviour
                     transformedmesh.SetVertices(transformedvertices);
                     transformedmesh.SetUVs(0, uvs);
                     transformedmesh.SetTriangles(triangles, 0, true);
-                    transformedmesh.RecalculateNormals();
 
                     meshes.Add(transformedmesh);
                 }
@@ -1370,7 +1370,6 @@ public class LevelLoader : MonoBehaviour
                             transformedmesh.SetVertices(transformedvertices);
                             transformedmesh.SetUVs(0, uvs);
                             transformedmesh.SetTriangles(triangles, 0, true);
-                            transformedmesh.RecalculateNormals();
 
                             meshes.Add(transformedmesh);
                         }
@@ -1406,7 +1405,6 @@ public class LevelLoader : MonoBehaviour
                             transformedmesh.SetVertices(transformedvertices);
                             transformedmesh.SetUVs(0, uvs);
                             transformedmesh.SetTriangles(triangles, 0, true);
-                            transformedmesh.RecalculateNormals();
 
                             meshes.Add(transformedmesh);
                         }
@@ -1457,7 +1455,6 @@ public class LevelLoader : MonoBehaviour
                         transformedmesh.SetVertices(transformedvertices);
                         transformedmesh.SetUVs(0, uvs);
                         transformedmesh.SetTriangles(triangles, 0, true);
-                        transformedmesh.RecalculateNormals();
 
                         meshes.Add(transformedmesh);
                     }
@@ -1504,7 +1501,6 @@ public class LevelLoader : MonoBehaviour
                             transformedmesh.SetVertices(transformedvertices);
                             transformedmesh.SetUVs(0, uvs);
                             transformedmesh.SetTriangles(triangles, 0, true);
-                            transformedmesh.RecalculateNormals();
 
                             meshes.Add(transformedmesh);
                         }
@@ -1540,7 +1536,6 @@ public class LevelLoader : MonoBehaviour
                             transformedmesh.SetVertices(transformedvertices);
                             transformedmesh.SetUVs(0, uvs);
                             transformedmesh.SetTriangles(triangles, 0, true);
-                            transformedmesh.RecalculateNormals();
 
                             meshes.Add(transformedmesh);
                         }
@@ -1602,7 +1597,6 @@ public class LevelLoader : MonoBehaviour
                 transformedfloormesh.SetVertices(floorverts);
                 transformedfloormesh.SetUVs(0, flooruvs);
                 transformedfloormesh.SetTriangles(floortri, 0, true);
-                transformedfloormesh.RecalculateNormals();
 
                 meshes.Add(transformedfloormesh);
 
@@ -1616,7 +1610,6 @@ public class LevelLoader : MonoBehaviour
                 transformedceilingmesh.SetVertices(ceilingverts);
                 transformedceilingmesh.SetUVs(0, ceilinguvs);
                 transformedceilingmesh.SetTriangles(ceilingtri, 0, true);
-                transformedceilingmesh.RecalculateNormals();
 
                 meshes.Add(transformedceilingmesh);
             }
@@ -1735,10 +1728,15 @@ public class LevelLoader : MonoBehaviour
                     meta.lineCount = -1;
                 }
 
+                float3 v0 = mesh.vertices[0];
+                float3 v1 = mesh.vertices[1];
+                float3 v2 = mesh.vertices[2];
+                float3 n = math.normalize(math.cross(v1 - v0, v2 - v0));
+
                 MathematicalPlane plane = new MathematicalPlane
                 {
-                    normal = mesh.normals[0],
-                    distance = -math.dot(mesh.normals[0], mesh.vertices[0])
+                    normal = n,
+                    distance = -math.dot(n, v0)
                 };
 
                 LevelLists.planes.Add(plane);

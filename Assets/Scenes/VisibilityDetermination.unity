@@ -338,7 +338,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Name: twohallways-clear
-  debug: 0
   speed: 7
   jumpHeight: 2
   gravity: 5

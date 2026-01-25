@@ -14,8 +14,8 @@ public struct Triangle
 
 public struct Edge
 {
-    public float3 start;
-    public float3 end;
+    public float3 v0;
+    public float3 v1;
 };
 
 public struct MathematicalPlane
@@ -26,7 +26,7 @@ public struct MathematicalPlane
 
 public struct StartPos
 {
-    public float3 position;
+    public float3 start;
     public int sectorId;
 };
 
@@ -405,8 +405,8 @@ public struct SectorsJob : IJobParallelFor
             for (int h = polygon.lineStartIndex; h < polygon.lineStartIndex + polygon.lineCount; h++)
             {
                 Edge line = edges[h];
-                processvertices[baseIndex + processedgescount] = line.start;
-                processvertices[baseIndex + processedgescount + 1] = line.end;
+                processvertices[baseIndex + processedgescount] = line.v0;
+                processvertices[baseIndex + processedgescount + 1] = line.v1;
                 processedgescount += 2;
                 processbool[baseIndex + processedgesboolcount] = true;
                 processbool[baseIndex + processedgesboolcount + 1] = true;
@@ -1161,7 +1161,7 @@ public class LevelLoader : MonoBehaviour
 
         CurrentSector = LevelLists.sectors[selectedPosition.sectorId];
 
-        Player.transform.position = new Vector3(selectedPosition.position.z, selectedPosition.position.y + 1.10f, selectedPosition.position.x);
+        Player.transform.position = new Vector3(selectedPosition.start.z, selectedPosition.start.y + 1.10f, selectedPosition.start.x);
     }
 
     public void LoadFromFile()
@@ -1667,11 +1667,12 @@ public class LevelLoader : MonoBehaviour
     {
         for (int i = 0; i < starts.Count; i++)
         {
-            StartPos Start = new StartPos();
+            StartPos Start = new StartPos
+            {
+                start = new float3(starts[i].location.x / 2 * 2.5f, sectors[starts[i].sector].floorHeight / 8 * 2.5f, starts[i].location.y / 2 * 2.5f),
 
-            Start.position = new Vector3(starts[i].location.x / 2 * 2.5f, sectors[starts[i].sector].floorHeight / 8 * 2.5f, starts[i].location.y / 2 * 2.5f);
-
-            Start.sectorId = starts[i].sector;
+                sectorId = starts[i].sector
+            };
 
             LevelLists.positions.Add(Start);
         }
@@ -1709,8 +1710,8 @@ public class LevelLoader : MonoBehaviour
 
                         Edge line = new Edge
                         {
-                            start = mesh.vertices[c],
-                            end = mesh.vertices[d]
+                            v0 = mesh.vertices[c],
+                            v1 = mesh.vertices[d]
                         };
 
                         LevelLists.edges.Add(line);

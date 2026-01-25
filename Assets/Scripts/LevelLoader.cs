@@ -24,9 +24,9 @@ public struct MathematicalPlane
     public float distance;
 };
 
-public struct StartPos
+public struct StartPosition
 {
-    public float3 start;
+    public float3 playerStart;
     public int sectorId;
 };
 
@@ -574,7 +574,7 @@ public class LevelLoader : MonoBehaviour
     private List<Vector2> vertices = new List<Vector2>();
     private List<int> triangles = new List<int>();
     private List<Sector> sectors = new List<Sector>();
-    private List<PlayerStart> starts = new List<PlayerStart>();
+    private List<StartSector> starts = new List<StartSector>();
     private List<Vector3> transformedvertices = new List<Vector3>();
     private List<Mesh> meshes = new List<Mesh>();
     private List<int> Plane = new List<int>();
@@ -631,7 +631,7 @@ public class LevelLoader : MonoBehaviour
     }
 
     [Serializable]
-    public class PlayerStart
+    public class StartSector
     {
         public Vector3 location;
         public float angle;
@@ -646,7 +646,7 @@ public class LevelLoader : MonoBehaviour
         public NativeList<MathematicalPlane> planes;
         public NativeList<PolygonMeta> polygons;
         public NativeList<SectorMeta> sectors;
-        public NativeList<StartPos> positions;
+        public NativeList<StartPosition> positions;
     }
 
     void Start()
@@ -666,7 +666,7 @@ public class LevelLoader : MonoBehaviour
         LevelLists.sectors = new NativeList<SectorMeta>(Allocator.Persistent);
         LevelLists.planes = new NativeList<MathematicalPlane>(Allocator.Persistent);
         LevelLists.polygons = new NativeList<PolygonMeta>(Allocator.Persistent);
-        LevelLists.positions = new NativeList<StartPos>(Allocator.Persistent);
+        LevelLists.positions = new NativeList<StartPosition>(Allocator.Persistent);
 
         CollisionObjects = new GameObject("Collision Meshes");
 
@@ -680,7 +680,7 @@ public class LevelLoader : MonoBehaviour
 
         BuildColliders();
 
-        Playerstart();
+        PlayerStart();
 
         processbool = new NativeArray<bool>(256 * 256, Allocator.Persistent);
         processvertices = new NativeArray<float3>(256 * 256, Allocator.Persistent);
@@ -1146,7 +1146,7 @@ public class LevelLoader : MonoBehaviour
         }
     }
 
-    public void Playerstart()
+    public void PlayerStart()
     {
         if (LevelLists.positions.Length == 0)
         {
@@ -1157,11 +1157,11 @@ public class LevelLoader : MonoBehaviour
 
         int randomIndex = UnityEngine.Random.Range(0, LevelLists.positions.Length);
 
-        StartPos selectedPosition = LevelLists.positions[randomIndex];
+        StartPosition selectedPosition = LevelLists.positions[randomIndex];
 
         CurrentSector = LevelLists.sectors[selectedPosition.sectorId];
 
-        Player.transform.position = new Vector3(selectedPosition.start.z, selectedPosition.start.y + 1.10f, selectedPosition.start.x);
+        Player.transform.position = new Vector3(selectedPosition.playerStart.z, selectedPosition.playerStart.y + 1.10f, selectedPosition.playerStart.x);
     }
 
     public void LoadFromFile()
@@ -1239,7 +1239,7 @@ public class LevelLoader : MonoBehaviour
 
             if (lines[i].StartsWith("player"))
             {
-                PlayerStart start = new PlayerStart();
+                StartSector start = new StartSector();
 
                 string[] parts = lines[i].Split('\t');
 
@@ -1667,14 +1667,14 @@ public class LevelLoader : MonoBehaviour
     {
         for (int i = 0; i < starts.Count; i++)
         {
-            StartPos Start = new StartPos
+            StartPosition start = new StartPosition
             {
-                start = new float3(starts[i].location.x / 2 * 2.5f, sectors[starts[i].sector].floorHeight / 8 * 2.5f, starts[i].location.y / 2 * 2.5f),
+                playerStart = new float3(starts[i].location.x / 2 * 2.5f, sectors[starts[i].sector].floorHeight / 8 * 2.5f, starts[i].location.y / 2 * 2.5f),
 
                 sectorId = starts[i].sector
             };
 
-            LevelLists.positions.Add(Start);
+            LevelLists.positions.Add(start);
         }
     }
 

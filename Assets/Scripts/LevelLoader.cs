@@ -108,7 +108,7 @@ public struct SectorsJob : IJobParallelFor
         {
             PolygonMeta polygon = polygons[a];
 
-            float planeDistance =  math.dot(planes[polygon.plane].normal, point) + planes[polygon.plane].distance;
+            float planeDistance = math.dot(planes[polygon.plane].normal, point) + planes[polygon.plane].distance;
 
             if (planeDistance <= 0)
             {
@@ -680,26 +680,24 @@ public class LevelLoader : MonoBehaviour
 
         BuildColliders();
 
-        PlayerStart();
-
-        processbool = new NativeArray<bool>(256 * 256, Allocator.Persistent);
-        processvertices = new NativeArray<float3>(256 * 256, Allocator.Persistent);
-        processtextures = new NativeArray<float3>(256 * 256, Allocator.Persistent);
-        temporaryvertices = new NativeArray<float3>(256 * 256, Allocator.Persistent);
-        temporarytextures = new NativeArray<float3>(256 * 256, Allocator.Persistent);
-        outedges = new NativeArray<float3>(256 * 256, Allocator.Persistent);
-        planeA = new NativeArray<MathematicalPlane>(256 * 256, Allocator.Persistent);
-        planeB = new NativeArray<MathematicalPlane>(256 * 256, Allocator.Persistent);
-        contains = new NativeList<SectorMeta>(Allocator.Persistent);
-        sideA = new NativeList<SectorMeta>(LevelLists.sectors.Length, Allocator.Persistent);
-        sideB = new NativeList<SectorMeta>(LevelLists.sectors.Length, Allocator.Persistent);
-        outTriangles = new NativeList<Triangle>(LevelLists.opaques.Length * 4, Allocator.Persistent);
-        OriginalFrustum = new NativeList<MathematicalPlane>(Allocator.Persistent);
+        processbool = new NativeArray<bool>((LevelLists.sectors.Length * 32) * 256, Allocator.Persistent);
+        processvertices = new NativeArray<float3>((LevelLists.sectors.Length * 32) * 256, Allocator.Persistent);
+        processtextures = new NativeArray<float3>((LevelLists.sectors.Length * 32) * 256, Allocator.Persistent);
+        temporaryvertices = new NativeArray<float3>((LevelLists.sectors.Length * 32) * 256, Allocator.Persistent);
+        temporarytextures = new NativeArray<float3>((LevelLists.sectors.Length * 32) * 256, Allocator.Persistent);
+        outedges = new NativeArray<float3>((LevelLists.sectors.Length * 32) * 256, Allocator.Persistent);
+        planeA = new NativeArray<MathematicalPlane>((LevelLists.sectors.Length * 32) * 256, Allocator.Persistent);
+        planeB = new NativeArray<MathematicalPlane>((LevelLists.sectors.Length * 32) * 256, Allocator.Persistent);
+        sideA = new NativeList<SectorMeta>(LevelLists.sectors.Length * 32, Allocator.Persistent);
+        sideB = new NativeList<SectorMeta>(LevelLists.sectors.Length * 32, Allocator.Persistent);
+        outTriangles = new NativeList<Triangle>(LevelLists.opaques.Length * 128, Allocator.Persistent);
+        OriginalFrustum = new NativeList<MathematicalPlane>(4, Allocator.Persistent);
         oldContains = new NativeList<SectorMeta>(Allocator.Persistent);
+        contains = new NativeList<SectorMeta>(Allocator.Persistent);
 
         int strideTriangle = System.Runtime.InteropServices.Marshal.SizeOf(typeof(Triangle));
 
-        triBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, LevelLists.opaques.Length * 4, strideTriangle);
+        triBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, LevelLists.opaques.Length * 128, strideTriangle);
 
         for (int i = 0; i < 2; i++)
         {
@@ -710,6 +708,8 @@ public class LevelLoader : MonoBehaviour
         {
             Physics.IgnoreCollision(playerCollider, ColliderSectors[LevelLists.sectors[i].sectorId], true);
         }
+
+        PlayerStart();
     }
 
     void Update()

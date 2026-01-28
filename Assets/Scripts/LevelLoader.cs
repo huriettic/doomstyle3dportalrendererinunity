@@ -19,15 +19,6 @@ public struct StartPosition
 [Serializable]
 public struct PolygonMeta
 {
-    public int vertexStartIndex;
-    public int vertexCount;
-
-    public int uvStartIndex;
-    public int uvCount;
-
-    public int normalStartIndex;
-    public int normalCount;
-
     public int intStartIndex;
     public int intCount;
 
@@ -1228,23 +1219,18 @@ public class LevelLoader : MonoBehaviour
                     double V0 = sector.floorHeight / 8 * 2.5f;
                     double V1 = sector.ceilingHeight / 8 * 2.5f;
 
-                    PolygonMeta transformedmesh = new PolygonMeta();
+                    int baseVert = LevelLists.vertices.Count;
 
-                    transformedmesh.vertexStartIndex = LevelLists.vertices.Count;
+                    int baseStartIndex = LevelLists.indices.Count;
 
                     LevelLists.vertices.Add(new Vector3((float)Z1, (float)V0, (float)X1));
                     LevelLists.vertices.Add(new Vector3((float)Z1, (float)V1, (float)X1));
                     LevelLists.vertices.Add(new Vector3((float)Z0, (float)V1, (float)X0));
                     LevelLists.vertices.Add(new Vector3((float)Z0, (float)V0, (float)X0));
 
-                    transformedmesh.intStartIndex = LevelLists.indices.Count;
-
-                    int baseVert = transformedmesh.vertexStartIndex;
-
                     LevelLists.indices.Add(baseVert);
                     LevelLists.indices.Add(baseVert + 1);
                     LevelLists.indices.Add(baseVert + 2);
-
                     LevelLists.indices.Add(baseVert);
                     LevelLists.indices.Add(baseVert + 2);
                     LevelLists.indices.Add(baseVert + 3);
@@ -1264,37 +1250,32 @@ public class LevelLoader : MonoBehaviour
                     LeftPlane = new MathematicalPlane { normal = leftPlaneNormal, distance = leftPlaneDistance };
                     TopPlane = new MathematicalPlane { normal = topPlaneNormal, distance = topPlaneDistance };
 
-                    transformedmesh.uvStartIndex = LevelLists.textures.Count;
-
                     LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert]) / 2.5f, 3));
                     LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert + 1]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert + 1]) / 2.5f, 3));
                     LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert + 2]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert + 2]) / 2.5f, 3));
                     LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert + 3]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert + 3]) / 2.5f, 3));
 
-                    transformedmesh.normalStartIndex = LevelLists.normals.Count;
-
                     LevelLists.normals.Add(n);
                     LevelLists.normals.Add(n);
                     LevelLists.normals.Add(n);
                     LevelLists.normals.Add(n);
 
-                    transformedmesh.plane = LevelLists.planes.Count;
+                    PolygonMeta transformedmesh = new PolygonMeta
+                    {
+                        plane = LevelLists.planes.Count,
 
-                    transformedmesh.collider = i;
+                        collider = i,
 
-                    transformedmesh.render = i;
+                        render = i,
 
-                    transformedmesh.sectorId = i;
+                        sectorId = i,
 
-                    transformedmesh.connectedSectorId = -1;
+                        connectedSectorId = -1,
 
-                    transformedmesh.vertexCount = 4;
+                        intStartIndex = baseStartIndex,
 
-                    transformedmesh.uvCount = 4;
-
-                    transformedmesh.normalCount = 4;
-
-                    transformedmesh.intCount = 6;
+                        intCount = 6
+                    };
 
                     LevelLists.polygons.Add(transformedmesh);
 
@@ -1325,23 +1306,18 @@ public class LevelLoader : MonoBehaviour
                                 Ceiling = sector.ceilingHeight / 8 * 2.5f;
                             }
 
-                            PolygonMeta transformedmesh = new PolygonMeta();
+                            int baseVert = LevelLists.vertices.Count;
 
-                            transformedmesh.vertexStartIndex = LevelLists.vertices.Count;
+                            int baseStartIndex = LevelLists.indices.Count;
 
                             LevelLists.vertices.Add(new Vector3((float)Z1, (float)Ceiling, (float)X1));
                             LevelLists.vertices.Add(new Vector3((float)Z1, (float)C0, (float)X1));
                             LevelLists.vertices.Add(new Vector3((float)Z0, (float)C0, (float)X0));
                             LevelLists.vertices.Add(new Vector3((float)Z0, (float)Ceiling, (float)X0));
 
-                            transformedmesh.intStartIndex = LevelLists.indices.Count;
-
-                            int baseVert = transformedmesh.vertexStartIndex;
-
                             LevelLists.indices.Add(baseVert);
                             LevelLists.indices.Add(baseVert + 1);
                             LevelLists.indices.Add(baseVert + 2);
-
                             LevelLists.indices.Add(baseVert);
                             LevelLists.indices.Add(baseVert + 2);
                             LevelLists.indices.Add(baseVert + 3);
@@ -1361,37 +1337,32 @@ public class LevelLoader : MonoBehaviour
                             LeftPlane = new MathematicalPlane { normal = leftPlaneNormal, distance = leftPlaneDistance };
                             TopPlane = new MathematicalPlane { normal = topPlaneNormal, distance = topPlaneDistance };
 
-                            transformedmesh.uvStartIndex = LevelLists.textures.Count;
-
                             LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert]) / 2.5f, 3));
                             LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert + 1]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert + 1]) / 2.5f, 3));
                             LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert + 2]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert + 2]) / 2.5f, 3));
                             LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert + 3]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert + 3]) / 2.5f, 3));
 
-                            transformedmesh.normalStartIndex = LevelLists.normals.Count;
-
                             LevelLists.normals.Add(n);
                             LevelLists.normals.Add(n);
                             LevelLists.normals.Add(n);
                             LevelLists.normals.Add(n);
 
-                            transformedmesh.plane = LevelLists.planes.Count;
+                            PolygonMeta transformedmesh = new PolygonMeta
+                            {
+                                plane = LevelLists.planes.Count,
 
-                            transformedmesh.collider = i;
+                                collider = i,
 
-                            transformedmesh.render = i;
+                                render = i,
 
-                            transformedmesh.sectorId = i;
+                                sectorId = i,
 
-                            transformedmesh.connectedSectorId = -1;
+                                connectedSectorId = -1,
 
-                            transformedmesh.vertexCount = 4;
+                                intStartIndex = baseStartIndex,
 
-                            transformedmesh.uvCount = 4;
-
-                            transformedmesh.normalCount = 4;
-
-                            transformedmesh.intCount = 6;
+                                intCount = 6
+                            };
 
                             LevelLists.polygons.Add(transformedmesh);
 
@@ -1410,23 +1381,18 @@ public class LevelLoader : MonoBehaviour
                             double C0 = sector.ceilingHeight / 8 * 2.5f;
                             double C1 = sector.floorHeight / 8 * 2.5f;
 
-                            PolygonMeta transformedmesh = new PolygonMeta();
+                            int baseVert = LevelLists.vertices.Count;
 
-                            transformedmesh.vertexStartIndex = LevelLists.vertices.Count;
+                            int baseStartIndex = LevelLists.indices.Count;
 
                             LevelLists.vertices.Add(new Vector3((float)Z1, (float)C1, (float)X1));
                             LevelLists.vertices.Add(new Vector3((float)Z1, (float)C0, (float)X1));
                             LevelLists.vertices.Add(new Vector3((float)Z0, (float)C0, (float)X0));
                             LevelLists.vertices.Add(new Vector3((float)Z0, (float)C1, (float)X0));
 
-                            transformedmesh.intStartIndex = LevelLists.indices.Count;
-
-                            int baseVert = transformedmesh.vertexStartIndex;
-
                             LevelLists.indices.Add(baseVert);
                             LevelLists.indices.Add(baseVert + 1);
                             LevelLists.indices.Add(baseVert + 2);
-
                             LevelLists.indices.Add(baseVert);
                             LevelLists.indices.Add(baseVert + 2);
                             LevelLists.indices.Add(baseVert + 3);
@@ -1446,37 +1412,32 @@ public class LevelLoader : MonoBehaviour
                             LeftPlane = new MathematicalPlane { normal = leftPlaneNormal, distance = leftPlaneDistance };
                             TopPlane = new MathematicalPlane { normal = topPlaneNormal, distance = topPlaneDistance };
 
-                            transformedmesh.uvStartIndex = LevelLists.textures.Count;
-
                             LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert]) / 2.5f, 3));
                             LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert + 1]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert + 1]) / 2.5f, 3));
                             LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert + 2]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert + 2]) / 2.5f, 3));
                             LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert + 3]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert + 3]) / 2.5f, 3));
 
-                            transformedmesh.normalStartIndex = LevelLists.normals.Count;
-
                             LevelLists.normals.Add(n);
                             LevelLists.normals.Add(n);
                             LevelLists.normals.Add(n);
                             LevelLists.normals.Add(n);
 
-                            transformedmesh.plane = LevelLists.planes.Count;
+                            PolygonMeta transformedmesh = new PolygonMeta
+                            {
+                                plane = LevelLists.planes.Count,
 
-                            transformedmesh.collider = i;
+                                collider = i,
 
-                            transformedmesh.render = i;
+                                render = i,
 
-                            transformedmesh.sectorId = i;
+                                sectorId = i,
 
-                            transformedmesh.connectedSectorId = -1;
+                                connectedSectorId = -1,
 
-                            transformedmesh.vertexCount = 4;
+                                intStartIndex = baseStartIndex,
 
-                            transformedmesh.uvCount = 4;
-
-                            transformedmesh.normalCount = 4;
-
-                            transformedmesh.intCount = 6;
+                                intCount = 6
+                            };
 
                             LevelLists.polygons.Add(transformedmesh);
 
@@ -1510,18 +1471,14 @@ public class LevelLoader : MonoBehaviour
                             Floor = sectors[wall].floorHeight / 8 * 2.5f;
                         }
 
-                        PolygonMeta transformedmesh = new PolygonMeta();
+                        int baseVert = LevelLists.vertices.Count;
 
-                        transformedmesh.vertexStartIndex = LevelLists.vertices.Count;
+                        int baseStartIndex = LevelLists.indices.Count;
 
                         LevelLists.vertices.Add(new Vector3((float)Z1, (float)Floor, (float)X1));
                         LevelLists.vertices.Add(new Vector3((float)Z1, (float)Ceiling, (float)X1));
                         LevelLists.vertices.Add(new Vector3((float)Z0, (float)Ceiling, (float)X0));
                         LevelLists.vertices.Add(new Vector3((float)Z0, (float)Floor, (float)X0));
-
-                        transformedmesh.intStartIndex = LevelLists.indices.Count;
-
-                        int baseVert = transformedmesh.vertexStartIndex;
 
                         LevelLists.indices.Add(baseVert);
                         LevelLists.indices.Add(baseVert + 1);
@@ -1535,39 +1492,35 @@ public class LevelLoader : MonoBehaviour
                         Vector3 v0 = LevelLists.vertices[baseVert];
                         Vector3 v1 = LevelLists.vertices[baseVert + 1];
                         Vector3 v2 = LevelLists.vertices[baseVert + 2];
+
                         Vector3 n = Vector3.Cross(v1 - v0, v2 - v0).normalized;
 
-                        transformedmesh.uvStartIndex = -1;
-
                         LevelLists.textures.Add(Vector3.zero);
                         LevelLists.textures.Add(Vector3.zero);
                         LevelLists.textures.Add(Vector3.zero);
                         LevelLists.textures.Add(Vector3.zero);
-
-                        transformedmesh.normalStartIndex = LevelLists.normals.Count;
 
                         LevelLists.normals.Add(Vector3.zero);
                         LevelLists.normals.Add(Vector3.zero);
                         LevelLists.normals.Add(Vector3.zero);
                         LevelLists.normals.Add(Vector3.zero);
 
-                        transformedmesh.plane = LevelLists.planes.Count;
+                        PolygonMeta transformedmesh = new PolygonMeta
+                        {
+                            plane = LevelLists.planes.Count,
 
-                        transformedmesh.collider = -1;
+                            collider = -1,
 
-                        transformedmesh.render = -1;
+                            render = -1,
 
-                        transformedmesh.sectorId = i;
+                            sectorId = i,
 
-                        transformedmesh.connectedSectorId = wall;
+                            connectedSectorId = wall,
 
-                        transformedmesh.vertexCount = 4;
+                            intStartIndex = baseStartIndex,
 
-                        transformedmesh.uvCount = -1;
-
-                        transformedmesh.normalCount = -1;
-
-                        transformedmesh.intCount = 8;
+                            intCount = 8
+                        };
 
                         LevelLists.polygons.Add(transformedmesh);
 
@@ -1597,23 +1550,18 @@ public class LevelLoader : MonoBehaviour
                                 Floor = sectors[wall].floorHeight / 8 * 2.5f;
                             }
 
-                            PolygonMeta transformedmesh = new PolygonMeta();
+                            int baseVert = LevelLists.vertices.Count;
 
-                            transformedmesh.vertexStartIndex = LevelLists.vertices.Count;
+                            int baseStartIndex = LevelLists.indices.Count;
 
                             LevelLists.vertices.Add(new Vector3((float)Z1, (float)F0, (float)X1));
                             LevelLists.vertices.Add(new Vector3((float)Z1, (float)Floor, (float)X1));
                             LevelLists.vertices.Add(new Vector3((float)Z0, (float)Floor, (float)X0));
                             LevelLists.vertices.Add(new Vector3((float)Z0, (float)F0, (float)X0));
 
-                            transformedmesh.intStartIndex = LevelLists.indices.Count;
-
-                            int baseVert = transformedmesh.vertexStartIndex;
-
                             LevelLists.indices.Add(baseVert);
                             LevelLists.indices.Add(baseVert + 1);
                             LevelLists.indices.Add(baseVert + 2);
-
                             LevelLists.indices.Add(baseVert);
                             LevelLists.indices.Add(baseVert + 2);
                             LevelLists.indices.Add(baseVert + 3);
@@ -1633,37 +1581,32 @@ public class LevelLoader : MonoBehaviour
                             LeftPlane = new MathematicalPlane { normal = leftPlaneNormal, distance = leftPlaneDistance };
                             TopPlane = new MathematicalPlane { normal = topPlaneNormal, distance = topPlaneDistance };
 
-                            transformedmesh.uvStartIndex = LevelLists.textures.Count;
-
                             LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert]) / 2.5f, 2));
                             LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert + 1]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert + 1]) / 2.5f, 2));
                             LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert + 2]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert + 2]) / 2.5f, 2));
                             LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert + 3]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert + 3]) / 2.5f, 2));
 
-                            transformedmesh.normalStartIndex = LevelLists.normals.Count;
-
                             LevelLists.normals.Add(n);
                             LevelLists.normals.Add(n);
                             LevelLists.normals.Add(n);
                             LevelLists.normals.Add(n);
 
-                            transformedmesh.plane = LevelLists.planes.Count;
+                            PolygonMeta transformedmesh = new PolygonMeta
+                            {
+                                plane = LevelLists.planes.Count,
 
-                            transformedmesh.collider = i;
+                                collider = i,
 
-                            transformedmesh.render = i;
+                                render = i,
 
-                            transformedmesh.sectorId = i;
+                                sectorId = i,
 
-                            transformedmesh.connectedSectorId = -1;
+                                connectedSectorId = -1,
 
-                            transformedmesh.vertexCount = 4;
+                                intStartIndex = baseStartIndex,
 
-                            transformedmesh.uvCount = 4;
-
-                            transformedmesh.normalCount = 4;
-
-                            transformedmesh.intCount = 6;
+                                intCount = 6
+                            };
 
                             LevelLists.polygons.Add(transformedmesh);
 
@@ -1682,23 +1625,18 @@ public class LevelLoader : MonoBehaviour
                             double F0 = sector.floorHeight / 8 * 2.5f;
                             double F1 = sector.ceilingHeight / 8 * 2.5f;
 
-                            PolygonMeta transformedmesh = new PolygonMeta();
+                            int baseVert = LevelLists.vertices.Count;
 
-                            transformedmesh.vertexStartIndex = LevelLists.vertices.Count;
+                            int baseStartIndex = LevelLists.indices.Count;
 
                             LevelLists.vertices.Add(new Vector3((float)Z1, (float)F0, (float)X1));
                             LevelLists.vertices.Add(new Vector3((float)Z1, (float)F1, (float)X1));
                             LevelLists.vertices.Add(new Vector3((float)Z0, (float)F1, (float)X0));
                             LevelLists.vertices.Add(new Vector3((float)Z0, (float)F0, (float)X0));
 
-                            transformedmesh.intStartIndex = LevelLists.indices.Count;
-
-                            int baseVert = transformedmesh.vertexStartIndex;
-
                             LevelLists.indices.Add(baseVert);
                             LevelLists.indices.Add(baseVert + 1);
                             LevelLists.indices.Add(baseVert + 2);
-
                             LevelLists.indices.Add(baseVert);
                             LevelLists.indices.Add(baseVert + 2);
                             LevelLists.indices.Add(baseVert + 3);
@@ -1718,37 +1656,32 @@ public class LevelLoader : MonoBehaviour
                             LeftPlane = new MathematicalPlane { normal = leftPlaneNormal, distance = leftPlaneDistance };
                             TopPlane = new MathematicalPlane { normal = topPlaneNormal, distance = topPlaneDistance };
 
-                            transformedmesh.uvStartIndex = LevelLists.textures.Count;
-
                             LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert]) / 2.5f, 2));
                             LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert + 1]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert + 1]) / 2.5f, 2));
                             LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert + 2]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert + 2]) / 2.5f, 2));
                             LevelLists.textures.Add(new Vector3(GetPlaneSignedDistanceToPoint(LeftPlane, LevelLists.vertices[baseVert + 3]) / 2.5f, GetPlaneSignedDistanceToPoint(TopPlane, LevelLists.vertices[baseVert + 3]) / 2.5f, 2));
 
-                            transformedmesh.normalStartIndex = LevelLists.normals.Count;
-
                             LevelLists.normals.Add(n);
                             LevelLists.normals.Add(n);
                             LevelLists.normals.Add(n);
                             LevelLists.normals.Add(n);
 
-                            transformedmesh.plane = LevelLists.planes.Count;
+                            PolygonMeta transformedmesh = new PolygonMeta
+                            {
+                                plane = LevelLists.planes.Count,
 
-                            transformedmesh.collider = i;
+                                collider = i,
 
-                            transformedmesh.render = i;
+                                render = i,
 
-                            transformedmesh.sectorId = i;
+                                sectorId = i,
 
-                            transformedmesh.connectedSectorId = -1;
+                                connectedSectorId = -1,
 
-                            transformedmesh.vertexCount = 4;
+                                intStartIndex = baseStartIndex,
 
-                            transformedmesh.uvCount = 4;
-
-                            transformedmesh.normalCount = 4;
-
-                            transformedmesh.intCount = 6;
+                                intCount = 6
+                            };
 
                             LevelLists.polygons.Add(transformedmesh);
 
@@ -1852,25 +1785,19 @@ public class LevelLoader : MonoBehaviour
                     ceilingtri.Add(e + 2);
                 }
 
-                PolygonMeta transformedfloormesh = new PolygonMeta();
+                int baseFloor = LevelLists.vertices.Count;
 
-                transformedfloormesh.vertexStartIndex = LevelLists.vertices.Count;
+                int floorStartIndex = LevelLists.indices.Count;
 
                 for (int e = 0; e < floorverts.Count; e++)
                 {
                     LevelLists.vertices.Add(floorverts[e]);
                 }
 
-                transformedfloormesh.uvStartIndex = LevelLists.textures.Count;
-
                 for (int e = 0; e < flooruvs.Count; e++)
                 {
                     LevelLists.textures.Add(flooruvs[e]);
                 }
-
-                transformedfloormesh.intStartIndex = LevelLists.indices.Count;
-
-                int baseFloor = transformedfloormesh.vertexStartIndex;
 
                 for (int e = 0; e < floortri.Count; e++)
                 {
@@ -1883,30 +1810,27 @@ public class LevelLoader : MonoBehaviour
 
                 Vector3 f = Vector3.Cross(f1 - f0, f2 - f0).normalized;
 
-                transformedfloormesh.normalStartIndex = LevelLists.normals.Count;
-
                 for (int e = 0; e < floorverts.Count; e++)
                 {
                     LevelLists.normals.Add(f);
                 }
 
-                transformedfloormesh.plane = LevelLists.planes.Count;
+                PolygonMeta transformedfloormesh = new PolygonMeta
+                {
+                    plane = LevelLists.planes.Count,
 
-                transformedfloormesh.collider = i;
+                    collider = i,
 
-                transformedfloormesh.render = i;
+                    render = i,
 
-                transformedfloormesh.sectorId = i;
+                    sectorId = i,
 
-                transformedfloormesh.connectedSectorId = -1;
+                    connectedSectorId = -1,
 
-                transformedfloormesh.vertexCount = floorverts.Count;
+                    intStartIndex = floorStartIndex,
 
-                transformedfloormesh.uvCount = flooruvs.Count;
-
-                transformedfloormesh.normalCount = floorverts.Count;
-
-                transformedfloormesh.intCount = floortri.Count;
+                    intCount = floortri.Count
+                };
 
                 LevelLists.polygons.Add(transformedfloormesh);
 
@@ -1920,25 +1844,19 @@ public class LevelLoader : MonoBehaviour
 
                 polygonCount += 1;
 
-                PolygonMeta transformedceilingmesh = new PolygonMeta();
+                int baseCeiling = LevelLists.vertices.Count;
 
-                transformedceilingmesh.vertexStartIndex = LevelLists.vertices.Count;
+                int ceilingStartIndex = LevelLists.indices.Count;
 
                 for (int e = 0; e < ceilingverts.Count; e++)
                 {
                     LevelLists.vertices.Add(ceilingverts[e]);
                 }
 
-                transformedceilingmesh.uvStartIndex = LevelLists.textures.Count;
-
                 for (int e = 0; e < ceilinguvs.Count; e++)
                 {
                     LevelLists.textures.Add(ceilinguvs[e]);
                 }
-
-                transformedceilingmesh.intStartIndex = LevelLists.indices.Count;
-
-                int baseCeiling = transformedceilingmesh.vertexStartIndex;
 
                 for (int e = 0; e < ceilingtri.Count; e++)
                 {
@@ -1951,30 +1869,27 @@ public class LevelLoader : MonoBehaviour
 
                 Vector3 c = Vector3.Cross(c1 - c0, c2 - c0).normalized;
 
-                transformedceilingmesh.normalStartIndex = LevelLists.normals.Count;
-
                 for (int e = 0; e < ceilingverts.Count; e++)
                 {
                     LevelLists.normals.Add(c);
                 }
 
-                transformedceilingmesh.plane = LevelLists.planes.Count;
+                PolygonMeta transformedceilingmesh = new PolygonMeta
+                {
+                    plane = LevelLists.planes.Count,
 
-                transformedceilingmesh.collider = i;
+                    collider = i,
 
-                transformedceilingmesh.render = i;
+                    render = i,
 
-                transformedceilingmesh.sectorId = i;
+                    sectorId = i,
 
-                transformedceilingmesh.connectedSectorId = -1;
+                    connectedSectorId = -1,
 
-                transformedceilingmesh.vertexCount = ceilingverts.Count;
+                    intStartIndex = ceilingStartIndex,
 
-                transformedceilingmesh.uvCount = ceilinguvs.Count;
-
-                transformedceilingmesh.normalCount = ceilingverts.Count;
-
-                transformedceilingmesh.intCount = ceilingtri.Count;
+                    intCount = ceilingtri.Count
+                };
 
                 LevelLists.polygons.Add(transformedceilingmesh);
 
